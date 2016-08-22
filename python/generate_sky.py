@@ -33,9 +33,9 @@ def generate_sky(mjd0=59560.2, duration=0.01, timestep=5., timestep_max=20.,
     Observatory.lon = telescope.longitude_rad
     Observatory.elevation = telescope.height
 
-
     sun = ephem.Sun()
 
+    # Compute the sun altitude for all the possible MJDs
     for i, mjd in enumerate(mjds):
         Observatory.date = mjd2djd(mjd)
         sun.compute(Observatory)
