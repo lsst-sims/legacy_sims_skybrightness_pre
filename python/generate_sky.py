@@ -12,8 +12,52 @@ def generate_sky(mjd0=59560.2, duration=0.05, timestep=5., timestep_max=20.,
                  sunLimit=-12., fieldID=False, airmass_overhead=1.5, dm=0.2,
                  airmass_limit=2.5, moon_dist_limit=30., planet_dist_limit=4., verbose=True):
     """
-    Use the sky brightness model to generate a number of useful numpy arrays that can be used
-    to look-up sky brighntess and other pre-computed info
+    Pre-compute the sky brighntess for a series of mjd dates at the LSST site.
+
+    Parameters
+    ----------
+    mjd0 : float (9560.2)
+        The starting MJD time
+    duration : float
+        The length of time to generate sky maps for (years)
+    timestep : float (5.)
+        The timestep between sky maps (minutes)
+    timestep_max : float (20.)
+        The maximum alowable timestep (minutes)
+    outfile : str 
+        The name of the output file to save the results in
+    nside : in (32)
+        The nside to run the healpixel map at
+    sunLimit : float (-12)
+        The maximum altitude of the sun to try and generate maps for. MJDs with a higher 
+        sun altitude are dropped
+    fieldID : bool (False)
+        If True, computes sky magnitudes at OpSim field locations. If False
+        computes at healpixel centers.
+    airmass_overhead : float
+        The airmass region to demand sky models are well matched before dropping
+        and asuming the timestep can be interpolated
+    dm : float
+        If a skymap can be interpolated from neighboring maps with precision dm,
+        that mjd is dropped.
+    airmass_limit : float
+        Pixels with an airmass greater than airmass_limit are masked
+    moon_dist_limit : float
+        Pixels (fields) closer than moon_dist_limit (degrees) are masked
+    planet_dist_limit : float
+        Pixels (fields) closer than planet_dist_limit (degrees) to Venus, Mars, Jupiter, or Saturn are masked
+
+    Returns
+    -------
+    dict_of_lists : dict
+        includes key-value pairs:
+        mjds : the MJD at every computation. Not evenly spaced as no computations.
+        airmass : the airmass maps for each MJD
+        masks : The boolean mask map for each MJD (True means the pixel should be masked)
+        sunAlts : The sun altitude at each MJD
+    sky_brightness : dict
+        Has keys for each u,g,r,i,z,y filter. Each one is a 2-d array with dimensions of healpix ID and 
+        mjd (matched to the mjd list above).
     """
 
     sunLimit = np.radians(sunLimit)
