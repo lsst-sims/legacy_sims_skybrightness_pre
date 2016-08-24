@@ -1,5 +1,7 @@
 import numpy as np
 import glob
+import os
+
 
 class SkyModelPre(object):
 
@@ -8,22 +10,21 @@ class SkyModelPre(object):
         
         """
 
-        # XXX.  Make things intelligent so that it takes a path and knows how to read 
+        # XXX.  Make things intelligent so that it takes a path and knows how to read
         # filenames for the mjds that are inside and updates based on that
 
-        self.info =None
+        self.info = None
         self.sb = None
 
         if data_path is None:
             # data_path = 
             pass
-        self.files = glob.glob(os.path.join(data_path), '*.npz')
+        self.files = glob.glob(os.path.join(data_path, '*.npz'))
 
         data = np.load(filename)
         self.info = data['dict_of_lists'][()]
         self.sb = data['sky_brightness'][()]
         data.close()
-        self.filter_names = self.sb.keys()
 
     def _load_data(self, mjd, data_path=None):
         """
@@ -39,7 +40,8 @@ class SkyModelPre(object):
         data.close()
         self.filter_names = self.sb.keys()
 
-    def full_sky(self, mjd, apply_mask=False):
+    def full_sky(self, mjd, indx=None, apply_mask=False,
+                 filters=['u', 'g', 'r', 'i', 'z', 'y']):
         """
         return a full sky map for the input mjd
         """
@@ -59,10 +61,12 @@ class SkyModelPre(object):
         w1 = (1. - wterm)
         w2 = wterm
         sbs = {}
-        for filter_name in self.filter_names:
-            sbs[filter_name] = self.sb[filter_name][left, :] * w1 + self.sb[filter_name][right, :] * w2
+        for filter_name in filters:
+            if indx is None:
+                sbs[filter_name] = self.sb[filter_name][left, :] * w1 + self.sb[filter_name][right, :] * w2
+            else:
+                sbs[filter_name] = self.sb[filter_name][left, indx] * w1 + self.sb[filter_name][right, indx] * w2
             # XXX just do a quick nearest neighbor return
             #sbs[filter_name] = self.sb[filter_name][left, :]
         return sbs
-
 
