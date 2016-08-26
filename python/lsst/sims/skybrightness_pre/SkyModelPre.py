@@ -6,12 +6,15 @@ from lsst.utils import getPackageDir
 
 __all__ = ['SkyModelPre']
 
+
 class SkyModelPre(object):
+    """
+    Load pre-computed sky brighntess maps for the LSST site and use them to interpolate to
+    arbitrary dates.
+    """
 
     def __init__(self, data_path=None, opsimFields=False, preload=True):
-        """
-        
-        """
+
         self.info = None
         self.sb = None
         self.opsimFields = opsimFields
@@ -61,18 +64,19 @@ class SkyModelPre(object):
     def returnMags(self, mjd, indx=None, apply_mask=True, badval=hp.UNSEEN,
                    filters=['u', 'g', 'r', 'i', 'z', 'y']):
         """
-        return a full sky map for the input mjd
+        Return a full sky map or individual pixels for the input mjd
 
         Parameters
         ----------
         mjd : float
             Modified Julian Date to interpolate to
         indx : int(s) (None)
-            indices to interpolate the sky values at. Returns full sky if None.
-        apply_mask : bool (False)
+            indices to interpolate the sky values at. Returns full sky if None. If the class was
+            instatiated with opsimFields, indx is the field ID, otherwise it is the healpix ID.
+        apply_mask : bool (True)
             Set sky maps to badval for regions that should be avoided (high airmass, near moon, near planets)
         badval : float (-1.6375e30)
-            Mask value.
+            Mask value. Defaults to the healpy mask value.
         filters : list
             List of strings for the filters that should be returned.
 

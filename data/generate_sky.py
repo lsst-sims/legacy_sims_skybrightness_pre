@@ -206,11 +206,9 @@ def generate_sky(mjd0=59560.2, mjd_max=59565.2, timestep=5., timestep_max=20.,
 
 if __name__ == "__main__":
 
-    # generate_sky()
     nyears = 13
     day_pad = 50.
     mjds = np.arange(59560, 59560+365.25*nyears+day_pad+366, 366)
-    # mjds = np.arange(59560., 59560.+10, 5.)
     for mjd1, mjd2 in zip(mjds[:-1], mjds[1:]):
         generate_sky(mjd0=mjd1, mjd_max=mjd2, outpath='healpix')
         generate_sky(mjd0=mjd1, mjd_max=mjd2, outpath='opsimFields', fieldID=True)
