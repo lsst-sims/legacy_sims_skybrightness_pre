@@ -3,14 +3,15 @@ import lsst.sims.skybrightness as sb
 import lsst.sims.utils as utils
 import healpy as hp
 import sys
+import os
 import ephem
 from lsst.sims.skybrightness.utils import mjd2djd
 
 
-def generate_sky(mjd0=59560.2, duration=0.05, timestep=5., timestep_max=20.,
-                 outfile='generated_sky.npz', nside=32,
+def generate_sky(mjd0=59560.2, mjd_max=59565.2, timestep=5., timestep_max=20.,
+                 outfile=None, outpath=None, nside=32,
                  sunLimit=-12., fieldID=False, airmass_overhead=1.5, dm=0.2,
-                 airmass_limit=2.5, moon_dist_limit=30., planet_dist_limit=4., verbose=True):
+                 airmass_limit=2.5, moon_dist_limit=30., planet_dist_limit=2., verbose=True):
     """
     Pre-compute the sky brighntess for a series of mjd dates at the LSST site.
 
@@ -24,12 +25,12 @@ def generate_sky(mjd0=59560.2, duration=0.05, timestep=5., timestep_max=20.,
         The timestep between sky maps (minutes)
     timestep_max : float (20.)
         The maximum alowable timestep (minutes)
-    outfile : str 
+    outfile : str
         The name of the output file to save the results in
     nside : in (32)
         The nside to run the healpixel map at
     sunLimit : float (-12)
-        The maximum altitude of the sun to try and generate maps for. MJDs with a higher 
+        The maximum altitude of the sun to try and generate maps for. MJDs with a higher
         sun altitude are dropped
     fieldID : bool (False)
         If True, computes sky magnitudes at OpSim field locations. If False
@@ -56,14 +57,13 @@ def generate_sky(mjd0=59560.2, duration=0.05, timestep=5., timestep_max=20.,
         masks : The boolean mask map for each MJD (True means the pixel should be masked)
         sunAlts : The sun altitude at each MJD
     sky_brightness : dict
-        Has keys for each u,g,r,i,z,y filter. Each one is a 2-d array with dimensions of healpix ID and 
+        Has keys for each u,g,r,i,z,y filter. Each one is a 2-d array with dimensions of healpix ID and
         mjd (matched to the mjd list above).
     """
 
     sunLimit = np.radians(sunLimit)
 
     # Set the time steps
-    mjd_max = mjd0 + duration*365.25
     timestep = timestep / 60. / 24.  # Convert to days
     timestep_max = timestep_max / 60. / 24.  # Convert to days
     # Switch the indexing to opsim field ID if requested
@@ -71,6 +71,11 @@ def generate_sky(mjd0=59560.2, duration=0.05, timestep=5., timestep_max=20.,
     # Look at the mjds and toss ones where the sun is up
     mjds = np.arange(mjd0, mjd_max+timestep, timestep)
     sunAlts = np.zeros(mjds.size, dtype=float)
+
+    if outfile is None:
+        outfile = '%f_%f.npz' % (mjds.min(), mjds.max())
+    if outpath is not None:
+        outfile = os.path.join(outpath, outfile)
 
     telescope = utils.Site('LSST')
     Observatory = ephem.Observer()
@@ -201,5 +206,11 @@ def generate_sky(mjd0=59560.2, duration=0.05, timestep=5., timestep_max=20.,
 
 if __name__ == "__main__":
 
-    #generate_sky(fieldID=True, outfile='generated_sky_field.npz')
-    generate_sky()
+    # generate_sky()
+    nyears = 13
+    day_pad = 50.
+    mjds = np.arange(59560, 59560+365.25*nyears+day_pad+366, 366)
+    # mjds = np.arange(59560., 59560.+10, 5.)
+    for mjd1, mjd2 in zip(mjds[:-1], mjds[1:]):
+        generate_sky(mjd0=mjd1, mjd_max=mjd2, outpath='healpix')
+        generate_sky(mjd0=mjd1, mjd_max=mjd2, outpath='opsimFields', fieldID=True)
