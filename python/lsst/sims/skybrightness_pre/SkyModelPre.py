@@ -8,7 +8,7 @@ __all__ = ['SkyModelPre']
 
 class SkyModelPre(object):
 
-    def __init__(self, filename, data_path=None, opsimFields=False):
+    def __init__(self, data_path=None, opsimFields=False, preload=True):
         """
         
         """
@@ -33,9 +33,10 @@ class SkyModelPre(object):
             mjd_right.append(temp[1])
 
         # Go ahead and load the first one by default
-        self.mjd_left = np.array(mjd_left)
-        self.mjd_right = np.array(mjd_right)
-        self._load_data(mjd_left[0])
+        if preload:
+            self.mjd_left = np.array(mjd_left)
+            self.mjd_right = np.array(mjd_right)
+            self._load_data(mjd_left[0])
 
     def _load_data(self, mjd):
         """
@@ -97,12 +98,12 @@ class SkyModelPre(object):
             if indx is None:
                 sbs[filter_name] = self.sb[filter_name][left, :] * w1 + self.sb[filter_name][right, :] * w2
                 if apply_mask:
-                    toMask = np.where(self.info['mask'][left, :] | self.info['mask'][right, :])
-                    sbs[filter_name][toMask] = self.badval
+                    toMask = np.where(self.info['masks'][left, :] | self.info['masks'][right, :])
+                    sbs[filter_name][toMask] = badval
             else:
                 sbs[filter_name] = self.sb[filter_name][left, indx] * w1 + self.sb[filter_name][right, indx] * w2
                 if apply_mask:
-                    toMask = np.where(self.info['mask'][left, indx] | self.info['mask'][right, indx])
-                    sbs[filter_name][toMask] = self.badval
+                    toMask = np.where(self.info['masks'][left, indx] | self.info['masks'][right, indx])
+                    sbs[filter_name][toMask] = badval
         return sbs
 
