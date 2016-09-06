@@ -27,6 +27,10 @@ class SkyModelPre(object):
                 data_path = os.path.join(getPackageDir('sims_skybrightness_pre'), 'data/healpix')
 
         self.files = glob.glob(os.path.join(data_path, '*.npz'))
+        if len(self.files) == 0:
+            errmssg = 'Failed to find pre-computed .npz files. '
+            errmssg += 'Copy data from NCSA with sims_skybrightness_pre/data/data_down.sh'
+            raise ValueError(errmssg)
         mjd_left = []
         mjd_right = []
         # Expect filenames of the form mjd1_mjd2.npz, e.g., 59632.155_59633.2.npz
@@ -49,7 +53,9 @@ class SkyModelPre(object):
         # Figure out which file to load.
         file_indx = np.where((mjd >= self.mjd_left) & (mjd <= self.mjd_right))[0]
         if np.size(file_indx) == 0:
-            raise ValueError('MJD = %f is out of range for the files found' % mjd)
+            raise ValueError('MJD = %f is out of range for the files found (%f-%f)' % (mjd,
+                                                                                       self.mjd_left.min(),
+                                                                                       self.mjd_right.max()))
         filename = self.files[file_indx.min()]
 
         data = np.load(filename)
@@ -60,6 +66,7 @@ class SkyModelPre(object):
 
         if not self.opsimFields:
             self.nside = hp.npix2nside(self.sb[self.filter_names[0]][0, :].size)
+        self.loaded_range = np.array([self.mjd_left[file_indx], self.mjd_right[file_indx]])
 
     def returnMags(self, mjd, indx=None, apply_mask=True, badval=hp.UNSEEN,
                    filters=['u', 'g', 'r', 'i', 'z', 'y']):
@@ -87,7 +94,7 @@ class SkyModelPre(object):
             hold the sky brightness maps in mag/sq arcsec.
         """
 
-        if (mjd < self.info['mjds'].min()) | (mjd > self.info['mjds'].max()):
+        if (mjd < self.loaded_range.min() | (mjd > self.loaded_range.max())):
             self._load_data(mjd)
 
         left = np.searchsorted(self.info['mjds'], mjd)-1
