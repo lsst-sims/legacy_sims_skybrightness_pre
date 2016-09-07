@@ -35,15 +35,18 @@ class SkyModelPre(object):
         mjd_right = []
         # Expect filenames of the form mjd1_mjd2.npz, e.g., 59632.155_59633.2.npz
         for filename in self.files:
-            temp = filename.replace('.npz', '').split('_')
-            mjd_left.append(temp[0])
-            mjd_right.append(temp[1])
+            temp = os.path.split(filename)[-1].replace('.npz', '').split('_')
+            mjd_left.append(float(temp[0]))
+            mjd_right.append(float(temp[1]))
+
+        self.mjd_left = np.array(mjd_left)
+        self.mjd_right = np.array(mjd_right)
 
         # Go ahead and load the first one by default
         if preload:
-            self.mjd_left = np.array(mjd_left)
-            self.mjd_right = np.array(mjd_right)
-            self._load_data(mjd_left[0])
+            self._load_data(self.mjd_left[0])
+        else:
+            self.loaded_range = -1
 
     def _load_data(self, mjd):
         """
@@ -93,8 +96,7 @@ class SkyModelPre(object):
             A dictionary with filter names as keys and np.arrays as values which
             hold the sky brightness maps in mag/sq arcsec.
         """
-
-        if (mjd < self.loaded_range.min() | (mjd > self.loaded_range.max())):
+        if (mjd < self.loaded_range.min() or (mjd > self.loaded_range.max())):
             self._load_data(mjd)
 
         left = np.searchsorted(self.info['mjds'], mjd)-1
