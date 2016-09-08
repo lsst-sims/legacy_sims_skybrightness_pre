@@ -29,7 +29,8 @@ class SkyModelPre(object):
         self.files = glob.glob(os.path.join(data_path, '*.npz'))
         if len(self.files) == 0:
             errmssg = 'Failed to find pre-computed .npz files. '
-            errmssg += 'Copy data from NCSA with sims_skybrightness_pre/data/data_down.sh'
+            errmssg += 'Copy data from NCSA with sims_skybrightness_pre/data/data_down.sh \n'
+            errmssg += 'or build by running sims_skybrightness_pre/data/generate_sky.py'
             raise ValueError(errmssg)
         mjd_left = []
         mjd_right = []

@@ -41,7 +41,7 @@ def conditions2m5(FWHMeff_zenith, sky_brightness, airmass, t_vis=30., filtername
         conditions2m5.k_m = {'u': 0.451, 'g': 0.163, 'r': 0.087, 'i': 0.065, 'z': 0.043, 'y': 0.138}
 
     # The FWHM at the airmass(es)
-    FWHMeff = airmass**(0.6)*FWHMeff_zenith
+    FWHMeff = airmass**(0.6) * FWHMeff_zenith
 
     # Equation 6 from overview paper
     m5 = conditions2m5.C_m[filtername] + 0.5 * (sky_brightness - 21.) + 2.5 * np.log10(0.7 / FWHMeff)
