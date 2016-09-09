@@ -57,8 +57,7 @@ def generate_percentiles(nbins=200):
                 # make the histogram for this point in the sky
                 histograms[filtername][:, indx] += np.histogram(m5s[np.isfinite(m5s)],
                                                                 bins=bins[filtername])[0]
-                if (indx > 6500) & (histograms[filtername][:, indx].max() == 0):
-                    import pdb ; pdb.set_trace()
+
     np.savez('percentile_m5_maps.npz', histograms=histograms, bins=bins)
 
 

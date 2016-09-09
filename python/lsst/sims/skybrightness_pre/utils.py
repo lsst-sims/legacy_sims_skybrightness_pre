@@ -38,6 +38,7 @@ def conditions2m5(FWHMeff_zenith, sky_brightness, airmass, t_vis=30., filtername
         # XXX--should check if there's a place where the C_m values can be computed from
         # all the latest throughput values
         conditions2m5.C_m = {'u': 22.92, 'g': 24.29, 'r': 24.33, 'i': 24.20, 'z': 24.07, 'y': 23.69}
+        conditions2m5.dCm_inf = {'u': 0.67, 'g': 0.21, 'r': 0.11, 'i': 0.08, 'z': 0.05, 'y': 0.04}
         conditions2m5.k_m = {'u': 0.451, 'g': 0.163, 'r': 0.087, 'i': 0.065, 'z': 0.043, 'y': 0.138}
 
     # The FWHM at the airmass(es)
@@ -46,5 +47,12 @@ def conditions2m5(FWHMeff_zenith, sky_brightness, airmass, t_vis=30., filtername
     # Equation 6 from overview paper
     m5 = conditions2m5.C_m[filtername] + 0.5 * (sky_brightness - 21.) + 2.5 * np.log10(0.7 / FWHMeff)
     m5 += 1.25 * np.log10(t_vis / 30.) - conditions2m5.k_m[filtername] * (airmass - 1.)
+
+    # Equation 7 from the overview paper
+    if t_vis > 30.:
+        tau = t_vis/30.
+        numerator = 10.**(0.8 * conditions2m5.dCm_inf[filtername]) - 1.
+        dcm = conditions2m5.dCm_inf[filtername]-1.25*np.log10(1. + numerator/tau)
+        m5 += dcm
 
     return m5
