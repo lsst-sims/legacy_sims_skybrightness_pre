@@ -65,6 +65,7 @@ class SkyModelPre(object):
         data = np.load(filename)
         self.info = data['dict_of_lists'][()]
         self.sb = data['sky_brightness'][()]
+        self.header = data['header'][()]
         data.close()
         self.filter_names = self.sb.keys()
 
@@ -81,7 +82,7 @@ class SkyModelPre(object):
         ----------
         mjd : float
             Modified Julian Date to interpolate to
-        indx : int(s) (None)
+        indx : List of int(s) (None)
             indices to interpolate the sky values at. Returns full sky if None. If the class was
             instatiated with opsimFields, indx is the field ID, otherwise it is the healpix ID.
         apply_mask : bool (True)
@@ -104,6 +105,20 @@ class SkyModelPre(object):
         right = left+1
 
         baseline = self.info['mjds'][right] - self.info['mjds'][left]
+
+        # Check if we are between sunrise/set
+        if baseline > self.header['timestep_max']:
+            if indx is None:
+                result_size = self.sb[self.sb.keys()[0]][left, :].size
+            else:
+                result_size = len(indx)
+            result = np.empty(result_size, dtype=float)
+            result.fill(badval)
+            final_result = {}
+            for filter_name in filters:
+                final_result[filter_name] = result
+            return final_result
+
         wterm = (mjd - self.info['mjds'][left])/baseline
         w1 = (1. - wterm)
         w2 = wterm

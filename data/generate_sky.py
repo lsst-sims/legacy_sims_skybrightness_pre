@@ -37,7 +37,7 @@ def generate_sky(mjd0=59560.2, mjd_max=59565.2, timestep=5., timestep_max=20.,
         computes at healpixel centers.
     airmass_overhead : float
         The airmass region to demand sky models are well matched before dropping
-        and asuming the timestep can be interpolated
+        and assuming the timestep can be interpolated
     dm : float
         If a skymap can be interpolated from neighboring maps with precision dm,
         that mjd is dropped.
@@ -201,8 +201,13 @@ def generate_sky(mjd0=59560.2, mjd_max=59565.2, timestep=5., timestep_max=20.,
         sky_brightness[key] = np.array(sky_brightness[key])
 
     # Generate a header to save all the kwarg info for how this run was computed
+    header = {'mjd0': mjd0, 'mjd_max': mjd_max, 'timestep': timestep, 'timestep_max': timestep_max,
+              'outfile': outfile, 'outpath': outpath, 'nside': nside, 'sunLimit': sunLimit,
+              'fieldID': fieldID, 'airmas_overhead': airmass_overhead, 'dm': dm,
+              'airmass_limit': airmass_limit, 'moon_dist_limit': moon_dist_limit,
+              'planet_dist_limit': planet_dist_limit, 'verbose': verbose}
 
-    np.savez(outfile, dict_of_lists = dict_of_lists, sky_brightness=sky_brightness)
+    np.savez(outfile, dict_of_lists = dict_of_lists, sky_brightness=sky_brightness, header=header)
 
 if __name__ == "__main__":
 
