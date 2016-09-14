@@ -73,6 +73,56 @@ class SkyModelPre(object):
             self.nside = hp.npix2nside(self.sb[self.filter_names[0]][0, :].size)
         self.loaded_range = np.array([self.mjd_left[file_indx], self.mjd_right[file_indx]])
 
+    def returnAirmass(self, mjd, maxAM=10., indx=None, badval=hp.UNSEEN):
+        """
+
+        Parameters
+        ----------
+        mjd : float
+            Modified Julian Date to interpolate to
+        indx : List of int(s) (None)
+            indices to interpolate the sky values at. Returns full sky if None. If the class was
+            instatiated with opsimFields, indx is the field ID, otherwise it is the healpix ID.
+        maxAM : float (10)
+            The maximum airmass to return, everything above this airmass will be set to badval
+
+        Returns
+        -------
+        airmass : np.array
+            Array of airmass values. If the MJD is between sunrise and sunset, all values are masked.
+        """
+        if (mjd < self.loaded_range.min() or (mjd > self.loaded_range.max())):
+            self._load_data(mjd)
+
+        left = np.searchsorted(self.info['mjds'], mjd)-1
+        right = left+1
+
+        baseline = self.info['mjds'][right] - self.info['mjds'][left]
+
+        # Check if we are between sunrise/set
+        if indx is None:
+            result_size = self.sb[self.sb.keys()[0]][left, :].size
+            indx = np.arange(result_size)
+        else:
+            result_size = len(indx)
+        if baseline > self.header['timestep_max']:
+            result = np.empty(result_size, dtype=float)
+            result.fill(badval)
+            return result
+
+        wterm = (mjd - self.info['mjds'][left])/baseline
+        w1 = (1. - wterm)
+        w2 = wterm
+
+        airmass = self.info['airmass'][left, indx] * w1 + self.info['airmass'][right, indx] * w2
+        mask = np.where((self.info['airmass'][left, indx] < 1.) |
+                        (self.info['airmass'][left, indx] > maxAM) |
+                        (self.info['airmass'][right, indx] < 1.) |
+                        (self.info['airmass'][right, indx] > maxAM))
+        airmass[mask] = badval
+
+        return airmass
+
     def returnMags(self, mjd, indx=None, apply_mask=True, badval=hp.UNSEEN,
                    filters=['u', 'g', 'r', 'i', 'z', 'y']):
         """
