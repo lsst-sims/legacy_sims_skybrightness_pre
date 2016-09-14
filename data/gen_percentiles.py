@@ -2,7 +2,6 @@ import numpy as np
 from lsst.sims.skybrightness_pre import SkyModelPre, conditions2m5
 from lsst.sims.photUtils import LSSTdefaults
 
-
 def generate_percentiles(nbins=200):
     """
     Make histograms of the 5-sigma limiting depths for each point and each filter.

@@ -1,11 +1,10 @@
 import numpy as np
+from calcM5 import calcM5
+import bandpassUtils as bu
+from lsst.utils import getPackageDir
 
-# Goal is to compute the approximate 5-sigma limiting depth at evenly spaced time intervals for each
-# healpixel and field center. The we can have 6 histograms with ~200 bins, and then easily compute the
-# approximate percentile of a spot in the sky at any time, making it easier to decide between
-# fields or filters.
+# Need to setup syseng_throughputs
 
-# Need to generate a histogram for every point in the sky...
 __all__ = ['conditions2m5']
 
 
@@ -35,11 +34,14 @@ def conditions2m5(FWHMeff_zenith, sky_brightness, airmass, t_vis=30., filtername
     # Only construct the dictionaries once
     if not hasattr(conditions2m5, 'C_m'):
         # Values from overview paper Table 2.
-        # XXX--should check if there's a place where the C_m values can be computed from
-        # all the latest throughput values
-        conditions2m5.C_m = {'u': 22.92, 'g': 24.29, 'r': 24.33, 'i': 24.20, 'z': 24.07, 'y': 23.69}
-        conditions2m5.dCm_inf = {'u': 0.67, 'g': 0.21, 'r': 0.11, 'i': 0.08, 'z': 0.05, 'y': 0.04}
-        conditions2m5.k_m = {'u': 0.451, 'g': 0.163, 'r': 0.087, 'i': 0.065, 'z': 0.043, 'y': 0.138}
+        defaultDirs = bu.setDefaultDirs(rootDir = getPackageDir('syseng_throughputs'))
+        addLosses = True
+        atmosphere = bu.readAtmosphere(defaultDirs['atmosphere'], atmosFile='atmos_10_aerosol.dat')
+        hardware, system = bu.buildHardwareAndSystem(defaultDirs, addLosses, atmosphereOverride=atmosphere)
+        m5 = calcM5(hardware, system, atmosphere, title='', return_t2_values=True)
+        conditions2m5.C_m = m5['Cm']  # {'u': 22.92, 'g': 24.29, 'r': 24.33, 'i': 24.20, 'z': 24.07, 'y': 23.69}
+        conditions2m5.dCm_inf = m5['dCm_infinity']  # {'u': 0.67, 'g': 0.21, 'r': 0.11, 'i': 0.08, 'z': 0.05, 'y': 0.04}
+        conditions2m5.k_m = m5['kAtm']  # {'u': 0.451, 'g': 0.163, 'r': 0.087, 'i': 0.065, 'z': 0.043, 'y': 0.138}
 
     # The FWHM at the airmass(es)
     FWHMeff = airmass**(0.6) * FWHMeff_zenith
