@@ -205,7 +205,7 @@ def generate_sky(mjd0=59560.2, mjd_max=59565.2, timestep=5., timestep_max=20.,
               'outfile': outfile, 'outpath': outpath, 'nside': nside, 'sunLimit': sunLimit,
               'fieldID': fieldID, 'airmas_overhead': airmass_overhead, 'dm': dm,
               'airmass_limit': airmass_limit, 'moon_dist_limit': moon_dist_limit,
-              'planet_dist_limit': planet_dist_limit, 'verbose': verbose}
+              'planet_dist_limit': planet_dist_limit, 'ra': ra, 'dec': dec, 'verbose': verbose}
 
     np.savez(outfile, dict_of_lists = dict_of_lists, sky_brightness=sky_brightness, header=header)
 
