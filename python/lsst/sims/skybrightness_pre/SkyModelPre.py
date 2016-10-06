@@ -3,6 +3,7 @@ import glob
 import os
 import healpy as hp
 from lsst.utils import getPackageDir
+import warnings
 
 __all__ = ['SkyModelPre']
 
@@ -99,26 +100,29 @@ class SkyModelPre(object):
 
         baseline = self.info['mjds'][right] - self.info['mjds'][left]
 
-        # Check if we are between sunrise/set
         if indx is None:
             result_size = self.sb[self.sb.keys()[0]][left, :].size
             indx = np.arange(result_size)
         else:
             result_size = len(indx)
+        # Check if we are between sunrise/set
         if baseline > self.header['timestep_max']:
-            result = np.empty(result_size, dtype=float)
-            result.fill(badval)
-            return result
+            warnings.warn('Requested MJD between sunrise and sunset, returning closest maps')
+            diff = np.abs(self.info['mjds'][left:right+1]-mjd)
+            closest_indx = np.array([left, right])[np.where(diff == np.min(diff))]
+            airmass = self.info['airmass'][closest_indx, indx]
+            mask = np.where((self.info['airmass'][closest_indx, indx] < 1.) |
+                            (self.info['airmass'][closest_indx, indx] > maxAM))
 
-        wterm = (mjd - self.info['mjds'][left])/baseline
-        w1 = (1. - wterm)
-        w2 = wterm
-
-        airmass = self.info['airmass'][left, indx] * w1 + self.info['airmass'][right, indx] * w2
-        mask = np.where((self.info['airmass'][left, indx] < 1.) |
-                        (self.info['airmass'][left, indx] > maxAM) |
-                        (self.info['airmass'][right, indx] < 1.) |
-                        (self.info['airmass'][right, indx] > maxAM))
+        else:
+            wterm = (mjd - self.info['mjds'][left])/baseline
+            w1 = (1. - wterm)
+            w2 = wterm
+            airmass = self.info['airmass'][left, indx] * w1 + self.info['airmass'][right, indx] * w2
+            mask = np.where((self.info['airmass'][left, indx] < 1.) |
+                            (self.info['airmass'][left, indx] > maxAM) |
+                            (self.info['airmass'][right, indx] < 1.) |
+                            (self.info['airmass'][right, indx] > maxAM))
         airmass[mask] = badval
 
         return airmass
@@ -158,15 +162,15 @@ class SkyModelPre(object):
 
         # Check if we are between sunrise/set
         if baseline > self.header['timestep_max']:
-            if indx is None:
-                result_size = self.sb[self.sb.keys()[0]][left, :].size
-            else:
-                result_size = len(indx)
-            result = np.empty(result_size, dtype=float)
-            result.fill(badval)
+            warnings.warn('Requested MJD between sunrise and sunset, returning closest maps')
+            diff = np.abs(self.info['mjds'][left:right+1]-mjd)
+            closest_indx = np.array([left, right])[np.where(diff == np.min(diff))]
             final_result = {}
             for filter_name in filters:
-                final_result[filter_name] = result
+                final_result[filter_name] = self.sb[filter_name][closest_indx, :][0]
+                if apply_mask:
+                    toMask = np.where(self.info['masks'][closest_indx, :])
+                    final_result[filter_name][toMask] = badval
             return final_result
 
         wterm = (mjd - self.info['mjds'][left])/baseline
