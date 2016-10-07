@@ -74,6 +74,45 @@ class SkyModelPre(object):
             self.nside = hp.npix2nside(self.sb[self.filter_names[0]][0, :].size)
         self.loaded_range = np.array([self.mjd_left[file_indx], self.mjd_right[file_indx]])
 
+    def returnSunMoon(self, mjd):
+        """
+        Return dictionary with the interpolated positions for sun and moon
+
+        Parameters
+        ----------
+        mjd : float
+           Modified Julian Date to interpolate to
+
+        Returns
+        -------
+        sunMoon : dict
+            Dict with keys for the sun and moon RA and Dec and the
+            mooon-sun separation.
+        """
+
+        keys = ['sunAlts', 'moonAlts', 'moonRAs', 'moonDecs', 'sunRAs',
+                'sunDecs', 'moonSunSep']
+
+        if (mjd < self.loaded_range.min() or (mjd > self.loaded_range.max())):
+            self._load_data(mjd)
+
+        left = np.searchsorted(self.info['mjds'], mjd)-1
+        right = left+1
+
+        baseline = self.info['mjds'][right] - self.info['mjds'][left]
+        wterm = (mjd - self.info['mjds'][left])/baseline
+        w1 = (1. - wterm)
+        w2 = wterm
+
+        result = {}
+        for key in keys:
+            if key[-1] == 's':
+                newkey = key[:-1]
+            else:
+                newkey = key
+            result[newkey] = self.info[key][left] * w1 + self.info[key][right] * w2
+        return result
+
     def returnAirmass(self, mjd, maxAM=10., indx=None, badval=hp.UNSEEN):
         """
 

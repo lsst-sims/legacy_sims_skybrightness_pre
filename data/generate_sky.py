@@ -11,7 +11,7 @@ from lsst.sims.skybrightness.utils import mjd2djd
 def generate_sky(mjd0=59560.2, mjd_max=59565.2, timestep=5., timestep_max=20.,
                  outfile=None, outpath=None, nside=32,
                  sunLimit=-12., fieldID=False, airmass_overhead=1.5, dm=0.2,
-                 airmass_limit=2.5, moon_dist_limit=30., planet_dist_limit=2., verbose=True):
+                 airmass_limit=3., moon_dist_limit=30., planet_dist_limit=2., verbose=True):
     """
     Pre-compute the sky brighntess for a series of mjd dates at the LSST site.
 
@@ -84,6 +84,7 @@ def generate_sky(mjd0=59560.2, mjd_max=59565.2, timestep=5., timestep_max=20.,
     Observatory.elevation = telescope.height
 
     sun = ephem.Sun()
+    moon = ephem.Moon()
 
     # Planets we want to avoid
     planets = [ephem.Venus(), ephem.Mars(), ephem.Jupiter(), ephem.Saturn()]
@@ -112,12 +113,14 @@ def generate_sky(mjd0=59560.2, mjd_max=59565.2, timestep=5., timestep_max=20.,
         print 'using %i mjds' % mjds.size
 
     # Set up the sky brightness model
-    sm = sb.SkyModel(mags=True)
+    sm = sb.SkyModel(mags=True, airmass_limit=airmass_limit)
 
     filter_names = ['u', 'g', 'r', 'i', 'z', 'y']
 
     # Initialize the relevant lists
-    dict_of_lists = {'airmass': [], 'sunAlts': [], 'mjds': [], 'masks': []}
+    dict_of_lists = {'airmass': [], 'sunAlts': [], 'mjds': [], 'masks': [],
+                     'moonAlts': [], 'moonRAs': [], 'moonDecs': [], 'sunRAs': [],
+                     'sunDecs': [], 'moonSunSep':[]}
     sky_brightness = {}
     for filter_name in filter_names:
         sky_brightness[filter_name] = []
@@ -139,6 +142,11 @@ def generate_sky(mjd0=59560.2, mjd_max=59565.2, timestep=5., timestep_max=20.,
             dict_of_lists['airmass'].append(sm.airmass)
             dict_of_lists['sunAlts'].append(sm.sunAlt)
             dict_of_lists['mjds'].append(mjd)
+            dict_of_lists['sunRAs'].apppend(sm.sunRA)
+            dict_of_lists['sunDecs'].append(sm.sunDec)
+            dict_of_lists['moonRAs'].append(sm.moonRA)
+            dict_of_lists['moonDecs'].append(sm.moonDec)
+            dict_of_lists['moonSunSep'].append(sm.moonSunSep)
             last_5_mjds.append(mjd)
             last_5_mags.append(mags)
             if len(last_5_mjds) > 5:
