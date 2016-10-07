@@ -5,9 +5,50 @@ import lsst.utils.tests
 import healpy as hp
 import numpy as np
 import lsst.sims.utils as utils
+import ephem
+from lsst.sims.skybrightness.utils import mjd2djd
+from lsst.sims.utils import haversine
 
 
 class TestSkyPre(unittest.TestCase):
+
+    def testSunMoon(self):
+        """
+        Test that the sun moon interpolation is good enough
+        """
+        sm = sbp.SkyModelPre()
+        telescope = utils.Site('LSST')
+        Observatory = ephem.Observer()
+        Observatory.lat = telescope.latitude_rad
+        Observatory.lon = telescope.longitude_rad
+        Observatory.elevation = telescope.height
+
+        sun = ephem.Sun()
+        moon = ephem.Moon()
+
+        mjd1 = sm.info['mjds'][0]
+        mjd2 = sm.info['mjds'][3]
+
+        mjds = np.linspace(mjd1, mjd2, 20)
+
+        # Demand Moon and Sun Positions match to within 3 arcmin
+        arcmin_places = np.abs(np.floor(np.log10(3./60./180.*np.pi))).astype(int)
+
+        for mjd in mjds:
+            Observatory.date = mjd2djd(mjd)
+            sun.compute(Observatory)
+            moon.compute(Observatory)
+            pre_calced = sm.returnSunMoon(mjd)
+
+            self.assertLess(np.abs(pre_calced['sunAlt']-sun.alt), arcmin_places)
+            sun_dist = haversine(sun.ra, sun.dec, pre_calced['sunRA'], pre_calced['sunDec'])
+            self.assertAlmostEqual(sun_dist, 0., places=arcmin_places)
+
+            self.assertLess(np.abs(pre_calced['moonAlt']-moon.alt), arcmin_places)
+            moon_dist = haversine(moon.ra, moon.dec, pre_calced['moonRA'], pre_calced['moonDec'])
+            self.assertAlmostEqual(moon_dist, 0., places=arcmin_places)
+
+            self.assertAlmostEqual(pre_calced['moonSunSep'], moon.phase/100.*180., places=arcmin_places)
 
     def testSBP(self):
         """
