@@ -208,7 +208,7 @@ class SkyModelPre(object):
             for filter_name in filters:
                 final_result[filter_name] = self.sb[filter_name][closest_indx, :][0]
                 if apply_mask:
-                    toMask = np.where(self.info['masks'][closest_indx, :])
+                    toMask = np.where(self.info['masks'][closest_indx, :][0])
                     final_result[filter_name][toMask] = badval
             return final_result
 
