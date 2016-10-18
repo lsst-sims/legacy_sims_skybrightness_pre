@@ -210,6 +210,8 @@ class SkyModelPre(object):
                 if apply_mask:
                     toMask = np.where(self.info['masks'][closest_indx, :][0])
                     final_result[filter_name][toMask] = badval
+                if indx is not None:
+                    final_result[filter_name] = final_result[indx]
             return final_result
 
         wterm = (mjd - self.info['mjds'][left])/baseline
