@@ -227,7 +227,8 @@ class SkyModelPre(object):
                                       np.isinf(sbs[filter_name]))
                     sbs[filter_name][toMask] = badval
             else:
-                sbs[filter_name] = self.sb[filter_name][left, indx] * w1 + self.sb[filter_name][right, indx] * w2
+                sbs[filter_name] = self.sb[filter_name][left, indx] * w1 + \
+                    self.sb[filter_name][right, indx] * w2
                 if apply_mask:
                     toMask = np.where(self.info['masks'][left, indx] | self.info['masks'][right, indx] |
                                       np.isinf(sbs[filter_name]))
