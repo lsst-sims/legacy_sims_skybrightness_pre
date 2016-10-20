@@ -210,8 +210,9 @@ class SkyModelPre(object):
                 if apply_mask:
                     toMask = np.where(self.info['masks'][closest_indx, :][0])
                     final_result[filter_name][toMask] = badval
+                    final_result[filter_name][np.isinf(final_result[filter_name])] = badval
                 if indx is not None:
-                    final_result[filter_name] = final_result[indx]
+                    final_result[filter_name] = final_result[filter_name][indx]
             return final_result
 
         wterm = (mjd - self.info['mjds'][left])/baseline
@@ -222,12 +223,14 @@ class SkyModelPre(object):
             if indx is None:
                 sbs[filter_name] = self.sb[filter_name][left, :] * w1 + self.sb[filter_name][right, :] * w2
                 if apply_mask:
-                    toMask = np.where(self.info['masks'][left, :] | self.info['masks'][right, :])
+                    toMask = np.where(self.info['masks'][left, :] | self.info['masks'][right, :] |
+                                      np.isinf(sbs[filter_name]))
                     sbs[filter_name][toMask] = badval
             else:
                 sbs[filter_name] = self.sb[filter_name][left, indx] * w1 + self.sb[filter_name][right, indx] * w2
                 if apply_mask:
-                    toMask = np.where(self.info['masks'][left, indx] | self.info['masks'][right, indx])
+                    toMask = np.where(self.info['masks'][left, indx] | self.info['masks'][right, indx] |
+                                      np.isinf(sbs[filter_name]))
                     sbs[filter_name][toMask] = badval
         return sbs
 

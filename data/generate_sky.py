@@ -11,7 +11,8 @@ from lsst.sims.skybrightness.utils import mjd2djd
 def generate_sky(mjd0=59560.2, mjd_max=59565.2, timestep=5., timestep_max=20.,
                  outfile=None, outpath=None, nside=32,
                  sunLimit=-12., fieldID=False, airmass_overhead=1.5, dm=0.2,
-                 airmass_limit=3., moon_dist_limit=30., planet_dist_limit=2., verbose=True):
+                 airmass_limit=3., moon_dist_limit=30., planet_dist_limit=2., 
+                 alt_limit=86.5 , verbose=True):
     """
     Pre-compute the sky brighntess for a series of mjd dates at the LSST site.
 
@@ -45,8 +46,10 @@ def generate_sky(mjd0=59560.2, mjd_max=59565.2, timestep=5., timestep_max=20.,
         Pixels with an airmass greater than airmass_limit are masked
     moon_dist_limit : float
         Pixels (fields) closer than moon_dist_limit (degrees) are masked
-    planet_dist_limit : float
+    planet_dist_limit : float (2.)
         Pixels (fields) closer than planet_dist_limit (degrees) to Venus, Mars, Jupiter, or Saturn are masked
+    alt_limit : float (86.5)
+        Altitude limit of the telescope (degrees). Altitudes higher than this are masked.
 
     Returns
     -------
@@ -62,6 +65,7 @@ def generate_sky(mjd0=59560.2, mjd_max=59565.2, timestep=5., timestep_max=20.,
     """
 
     sunLimit = np.radians(sunLimit)
+    alt_limit = np.radians(alt_limit)
 
     # Set the time steps
     timestep = timestep / 60. / 24.  # Convert to days
@@ -161,6 +165,9 @@ def generate_sky(mjd0=59560.2, mjd_max=59565.2, timestep=5., timestep_max=20.,
             # Apply moon distance limit
             mask[np.where(sm.moonTargSep <= np.radians(moon_dist_limit))] = True
 
+            # Apply altitude limit
+            mask[np.where(sm.alts >= alt_limit)] = True
+
             # Apply the planet distance limits
             Observatory.date = mjd2djd(mjd)
             for planet in planets:
@@ -213,7 +220,8 @@ def generate_sky(mjd0=59560.2, mjd_max=59565.2, timestep=5., timestep_max=20.,
               'outfile': outfile, 'outpath': outpath, 'nside': nside, 'sunLimit': sunLimit,
               'fieldID': fieldID, 'airmas_overhead': airmass_overhead, 'dm': dm,
               'airmass_limit': airmass_limit, 'moon_dist_limit': moon_dist_limit,
-              'planet_dist_limit': planet_dist_limit, 'ra': ra, 'dec': dec, 'verbose': verbose}
+              'planet_dist_limit': planet_dist_limit, 'alt_limit': alt_limit,
+              'ra': ra, 'dec': dec, 'verbose': verbose}
 
     np.savez(outfile, dict_of_lists = dict_of_lists, sky_brightness=sky_brightness, header=header)
 
