@@ -197,7 +197,15 @@ class SkyModelPre(object):
         left = np.searchsorted(self.info['mjds'], mjd)-1
         right = left+1
 
-        baseline = self.info['mjds'][right] - self.info['mjds'][left]
+        # If we are out of bounds
+        if right >= self.info['mjds'].size:
+            right -= 1
+            baseline = 1.
+        elif left < 0:
+            left += 1
+            baseline = 1.
+        else:
+            baseline = self.info['mjds'][right] - self.info['mjds'][left]
 
         # Check if we are between sunrise/set
         if baseline > self.header['timestep_max']:

@@ -8,11 +8,11 @@ import ephem
 from lsst.sims.skybrightness.utils import mjd2djd
 
 
-def generate_sky(mjd0=59560.2, mjd_max=59565.2, timestep=5., timestep_max=20.,
+def generate_sky(mjd0=59560.2, mjd_max=59565.2, timestep=5., timestep_max=15.,
                  outfile=None, outpath=None, nside=32,
                  sunLimit=-12., fieldID=False, airmass_overhead=1.5, dm=0.2,
-                 airmass_limit=3., moon_dist_limit=30., planet_dist_limit=2., 
-                 alt_limit=86.5 , verbose=True):
+                 airmass_limit=3., moon_dist_limit=30., planet_dist_limit=2.,
+                 alt_limit=86.5, requireStride=3, verbose=True):
     """
     Pre-compute the sky brighntess for a series of mjd dates at the LSST site.
 
@@ -50,6 +50,8 @@ def generate_sky(mjd0=59560.2, mjd_max=59565.2, timestep=5., timestep_max=20.,
         Pixels (fields) closer than planet_dist_limit (degrees) to Venus, Mars, Jupiter, or Saturn are masked
     alt_limit : float (86.5)
         Altitude limit of the telescope (degrees). Altitudes higher than this are masked.
+    requireStride : int (3)
+        Require every nth mjd. Makes it possible to easily select an evenly spaced number states of a pixel.
 
     Returns
     -------
@@ -99,6 +101,7 @@ def generate_sky(mjd0=59560.2, mjd_max=59565.2, timestep=5., timestep_max=20.,
         sunAlts[i] = sun.alt
 
     mjds = mjds[np.where(sunAlts <= np.radians(sunLimit))]
+    required_mjds = mjds[::3]
 
     if fieldID:
         field_data = np.loadtxt('fieldID.dat', delimiter='|', skiprows=1,
@@ -176,38 +179,38 @@ def generate_sky(mjd0=59560.2, mjd_max=59565.2, timestep=5., timestep_max=20.,
                 mask[np.where(distances <= np.radians(planet_dist_limit))] = True
 
             dict_of_lists['masks'].append(mask)
-
             if len(dict_of_lists['airmass']) > 3:
-                # Check if we can interpolate the second to last sky brightnesses
-                overhead = np.where((dict_of_lists['airmass'][-1] <= airmass_overhead) &
-                                    (dict_of_lists['airmass'][-2] <= airmass_overhead) &
-                                    (~dict_of_lists['masks'][-1]) &
-                                    (~dict_of_lists['masks'][-2]))
+                if dict_of_lists['mjds'][-2] not in required_mjds:
+                    # Check if we can interpolate the second to last sky brightnesses
+                    overhead = np.where((dict_of_lists['airmass'][-1] <= airmass_overhead) &
+                                        (dict_of_lists['airmass'][-2] <= airmass_overhead) &
+                                        (~dict_of_lists['masks'][-1]) &
+                                        (~dict_of_lists['masks'][-2]))
 
-                if (np.size(overhead[0]) > 0) & (dict_of_lists['mjds'][-1] -
-                                                 dict_of_lists['mjds'][-3] < timestep_max):
-                    can_interp = True
-                    for mjd2 in last_5_mjds:
-                        mjd1 = dict_of_lists['mjds'][-3]
-                        mjd3 = dict_of_lists['mjds'][-1]
-                        if (mjd2 > mjd1) & (mjd2 < mjd3):
-                            indx = np.where(last_5_mjds == mjd2)[0]
-                            # Linear interpolation weights
-                            wterm = (mjd2 - mjd1) / (mjd3-mjd1)
-                            w1 = 1. - wterm
-                            w2 = wterm
-                            for filter_name in filter_names:
-                                interp_sky = w1 * sky_brightness[filter_name][-3][overhead]
-                                interp_sky += w2 * sky_brightness[filter_name][-1][overhead]
-                                diff = np.abs(last_5_mags[indx][filter_name][overhead]-interp_sky)
-                                if np.size(diff[~np.isnan(diff)]) > 0:
-                                    if np.max(diff[~np.isnan(diff)]) > dm:
-                                        can_interp = False
-                    if can_interp:
-                        for key in dict_of_lists:
-                            del dict_of_lists[key][-2]
-                        for key in sky_brightness:
-                            del sky_brightness[key][-2]
+                    if (np.size(overhead[0]) > 0) & (dict_of_lists['mjds'][-1] -
+                                                     dict_of_lists['mjds'][-3] < timestep_max):
+                        can_interp = True
+                        for mjd2 in last_5_mjds:
+                            mjd1 = dict_of_lists['mjds'][-3]
+                            mjd3 = dict_of_lists['mjds'][-1]
+                            if (mjd2 > mjd1) & (mjd2 < mjd3):
+                                indx = np.where(last_5_mjds == mjd2)[0]
+                                # Linear interpolation weights
+                                wterm = (mjd2 - mjd1) / (mjd3-mjd1)
+                                w1 = 1. - wterm
+                                w2 = wterm
+                                for filter_name in filter_names:
+                                    interp_sky = w1 * sky_brightness[filter_name][-3][overhead]
+                                    interp_sky += w2 * sky_brightness[filter_name][-1][overhead]
+                                    diff = np.abs(last_5_mags[indx][filter_name][overhead]-interp_sky)
+                                    if np.size(diff[~np.isnan(diff)]) > 0:
+                                        if np.max(diff[~np.isnan(diff)]) > dm:
+                                            can_interp = False
+                        if can_interp:
+                            for key in dict_of_lists:
+                                del dict_of_lists[key][-2]
+                            for key in sky_brightness:
+                                del sky_brightness[key][-2]
     print ''
 
     for key in dict_of_lists:
@@ -221,7 +224,7 @@ def generate_sky(mjd0=59560.2, mjd_max=59565.2, timestep=5., timestep_max=20.,
               'fieldID': fieldID, 'airmas_overhead': airmass_overhead, 'dm': dm,
               'airmass_limit': airmass_limit, 'moon_dist_limit': moon_dist_limit,
               'planet_dist_limit': planet_dist_limit, 'alt_limit': alt_limit,
-              'ra': ra, 'dec': dec, 'verbose': verbose}
+              'ra': ra, 'dec': dec, 'verbose': verbose, 'required_mjds': required_mjds}
 
     np.savez(outfile, dict_of_lists = dict_of_lists, sky_brightness=sky_brightness, header=header)
 
