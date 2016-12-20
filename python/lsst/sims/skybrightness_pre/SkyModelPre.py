@@ -48,7 +48,7 @@ class SkyModelPre(object):
         if preload:
             self._load_data(self.mjd_left[0])
         else:
-            self.loaded_range = -1
+            self.loaded_range = np.array([-1])
 
     def _load_data(self, mjd):
         """
@@ -99,7 +99,16 @@ class SkyModelPre(object):
         left = np.searchsorted(self.info['mjds'], mjd)-1
         right = left+1
 
-        baseline = self.info['mjds'][right] - self.info['mjds'][left]
+        # If we are out of bounds
+        if right >= self.info['mjds'].size:
+            right -= 1
+            baseline = 1.
+        elif left < 0:
+            left += 1
+            baseline = 1.
+        else:
+            baseline = self.info['mjds'][right] - self.info['mjds'][left]
+
         wterm = (mjd - self.info['mjds'][left])/baseline
         w1 = (1. - wterm)
         w2 = wterm
@@ -137,7 +146,15 @@ class SkyModelPre(object):
         left = np.searchsorted(self.info['mjds'], mjd)-1
         right = left+1
 
-        baseline = self.info['mjds'][right] - self.info['mjds'][left]
+        # If we are out of bounds
+        if right >= self.info['mjds'].size:
+            right -= 1
+            baseline = 1.
+        elif left < 0:
+            left += 1
+            baseline = 1.
+        else:
+            baseline = self.info['mjds'][right] - self.info['mjds'][left]
 
         if indx is None:
             result_size = self.sb[self.sb.keys()[0]][left, :].size

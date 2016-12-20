@@ -12,11 +12,18 @@ from lsst.sims.utils import haversine
 
 class TestSkyPre(unittest.TestCase):
 
+    @classmethod
+    def setUpClass(cls):
+        cls.sm = sbp.SkyModelPre(preload=False)
+        mjd = 60291.35423611111
+        tmp = cls.sm.returnMags(mjd)
+
+
     def testReturnMags(self):
         """
         Test all the ways ReturnMags can be used
         """
-        sm = sbp.SkyModelPre()
+        sm = self.sm
         mjds = []
         for mjd in sm.info['mjds'][100:102]:
             mjds.append(mjd)
@@ -45,11 +52,29 @@ class TestSkyPre(unittest.TestCase):
                             self.assertEqual(np.size(mags[mags.keys()[0]]), np.size(indx))
                             self.assertEqual(np.size(airmasses), np.size(indx))
 
+    def testCrazyDate(self):
+        """
+        Test date that falls at akward time
+        """
+        mjd = 60291.35423611111
+        sm = self.sm
+        mags = sm.returnMags(mjd)
+        sunmoon = sm.returnSunMoon(mjd)
+        airmass = sm.returnAirmass(mjd)
+
+        goodVals = np.where(mags['g'] != hp.UNSEEN)[0]
+        assert(len(goodVals) > 0)
+        for key in sunmoon:
+            goodVals = np.where(sunmoon[key] != hp.UNSEEN)[0]
+            assert(len(goodVals) > 0)
+        goodVals = np.where(airmass != hp.UNSEEN)[0]
+        assert(len(goodVals) > 0)
+
     def testSunMoon(self):
         """
         Test that the sun moon interpolation is good enough
         """
-        sm = sbp.SkyModelPre()
+        sm = self.sm
         telescope = utils.Site('LSST')
         Observatory = ephem.Observer()
         Observatory.lat = telescope.latitude_rad
@@ -89,7 +114,7 @@ class TestSkyPre(unittest.TestCase):
         """
 
         original_model = sb.SkyModel(mags=True)
-        pre_calc_model = sbp.SkyModelPre()
+        pre_calc_model = self.sm
 
         hpindx = np.arange(hp.nside2npix(pre_calc_model.header['nside']))
         ra, dec = utils.hpid2RaDec(pre_calc_model.header['nside'], hpindx)
@@ -97,7 +122,7 @@ class TestSkyPre(unittest.TestCase):
         # Run through a number of mjd values
         step = 30. / 60. / 24.  # 30 minute timestep
         nmjd = 48
-        mjds = np.arange(nmjd)*step + 59573.2+0.1
+        mjds = np.arange(nmjd)*step + self.sm.info['mjds'][10]+0.1
 
         # Tolerance for difference between true and interpolated airmass
         am_tol = 0.05
