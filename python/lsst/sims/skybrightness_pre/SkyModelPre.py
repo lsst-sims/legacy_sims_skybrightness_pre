@@ -21,11 +21,16 @@ class SkyModelPre(object):
         self.opsimFields = opsimFields
 
         # Look in default location for .npz files to load
+        if 'SIMS_SKYBRIGHTNESS_DATA' in os.environ:
+            data_dir = os.environ['SIMS_SKYBRIGHTNESS_DATA']
+        else:
+            data_dir = os.path.join(getPackageDir('sims_skybrightness_pre'), 'data')
+
         if data_path is None:
             if opsimFields:
-                data_path = os.path.join(getPackageDir('sims_skybrightness_pre'), 'data/opsimFields')
+                data_path = os.path.join(data_dir, 'opsimFields')
             else:
-                data_path = os.path.join(getPackageDir('sims_skybrightness_pre'), 'data/healpix')
+                data_path = os.path.join(data_dir, 'healpix')
 
         self.files = glob.glob(os.path.join(data_path, '*.npz'))
         if len(self.files) == 0:

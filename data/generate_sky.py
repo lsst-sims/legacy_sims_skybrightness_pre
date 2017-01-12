@@ -11,7 +11,7 @@ from lsst.sims.skybrightness.utils import mjd2djd
 def generate_sky(mjd0=59560.2, mjd_max=59565.2, timestep=5., timestep_max=15.,
                  outfile=None, outpath=None, nside=32,
                  sunLimit=-12., fieldID=False, airmass_overhead=1.5, dm=0.2,
-                 airmass_limit=3., moon_dist_limit=30., planet_dist_limit=2.,
+                 airmass_limit=3., moon_dist_limit=10., planet_dist_limit=2.,
                  alt_limit=86.5, requireStride=3, verbose=True):
     """
     Pre-compute the sky brighntess for a series of mjd dates at the LSST site.
@@ -66,8 +66,8 @@ def generate_sky(mjd0=59560.2, mjd_max=59565.2, timestep=5., timestep_max=15.,
         mjd (matched to the mjd list above).
     """
 
-    sunLimit = np.radians(sunLimit)
-    alt_limit = np.radians(alt_limit)
+    sunLimit_rad = np.radians(sunLimit)
+    alt_limit_rad = np.radians(alt_limit)
 
     # Set the time steps
     timestep = timestep / 60. / 24.  # Convert to days
@@ -100,7 +100,7 @@ def generate_sky(mjd0=59560.2, mjd_max=59565.2, timestep=5., timestep_max=15.,
         sun.compute(Observatory)
         sunAlts[i] = sun.alt
 
-    mjds = mjds[np.where(sunAlts <= np.radians(sunLimit))]
+    mjds = mjds[np.where(sunAlts <= sunLimit_rad)]
     required_mjds = mjds[::3]
 
     if fieldID:
@@ -141,7 +141,7 @@ def generate_sky(mjd0=59560.2, mjd_max=59565.2, timestep=5., timestep_max=15.,
         sys.stdout.write(text)
         sys.stdout.flush()
         sm.setRaDecMjd(ra, dec, mjd, degrees=True)
-        if sm.sunAlt <= sunLimit:
+        if sm.sunAlt <= sunLimit_rad:
             mags = sm.returnMags()
             for key in filter_names:
                 sky_brightness[key].append(mags[key])
@@ -169,7 +169,7 @@ def generate_sky(mjd0=59560.2, mjd_max=59565.2, timestep=5., timestep_max=15.,
             mask[np.where(sm.moonTargSep <= np.radians(moon_dist_limit))] = True
 
             # Apply altitude limit
-            mask[np.where(sm.alts >= alt_limit)] = True
+            mask[np.where(sm.alts >= alt_limit_rad)] = True
 
             # Apply the planet distance limits
             Observatory.date = mjd2djd(mjd)
@@ -218,13 +218,17 @@ def generate_sky(mjd0=59560.2, mjd_max=59565.2, timestep=5., timestep_max=15.,
     for key in sky_brightness:
         sky_brightness[key] = np.array(sky_brightness[key])
 
+    import lsst.sims.skybrightness_pre
+    version = lsst.sims.skybrightness_pre.version.__version__
+    fingerprint = lsst.sims.skybrightness_pre.version__fingerprint__
     # Generate a header to save all the kwarg info for how this run was computed
     header = {'mjd0': mjd0, 'mjd_max': mjd_max, 'timestep': timestep, 'timestep_max': timestep_max,
               'outfile': outfile, 'outpath': outpath, 'nside': nside, 'sunLimit': sunLimit,
               'fieldID': fieldID, 'airmas_overhead': airmass_overhead, 'dm': dm,
               'airmass_limit': airmass_limit, 'moon_dist_limit': moon_dist_limit,
               'planet_dist_limit': planet_dist_limit, 'alt_limit': alt_limit,
-              'ra': ra, 'dec': dec, 'verbose': verbose, 'required_mjds': required_mjds}
+              'ra': ra, 'dec': dec, 'verbose': verbose, 'required_mjds': required_mjds,
+              'version':version, 'fingerprint': fingerprint}
 
     np.savez(outfile, dict_of_lists = dict_of_lists, sky_brightness=sky_brightness, header=header)
 
