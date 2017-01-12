@@ -220,7 +220,7 @@ def generate_sky(mjd0=59560.2, mjd_max=59565.2, timestep=5., timestep_max=15.,
 
     import lsst.sims.skybrightness_pre
     version = lsst.sims.skybrightness_pre.version.__version__
-    fingerprint = lsst.sims.skybrightness_pre.version__fingerprint__
+    fingerprint = lsst.sims.skybrightness_pre.version.__fingerprint__
     # Generate a header to save all the kwarg info for how this run was computed
     header = {'mjd0': mjd0, 'mjd_max': mjd_max, 'timestep': timestep, 'timestep_max': timestep_max,
               'outfile': outfile, 'outpath': outpath, 'nside': nside, 'sunLimit': sunLimit,
@@ -228,7 +228,7 @@ def generate_sky(mjd0=59560.2, mjd_max=59565.2, timestep=5., timestep_max=15.,
               'airmass_limit': airmass_limit, 'moon_dist_limit': moon_dist_limit,
               'planet_dist_limit': planet_dist_limit, 'alt_limit': alt_limit,
               'ra': ra, 'dec': dec, 'verbose': verbose, 'required_mjds': required_mjds,
-              'version':version, 'fingerprint': fingerprint}
+              'version': version, 'fingerprint': fingerprint}
 
     np.savez(outfile, dict_of_lists = dict_of_lists, sky_brightness=sky_brightness, header=header)
 
