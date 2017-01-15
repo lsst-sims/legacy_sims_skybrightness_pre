@@ -11,7 +11,7 @@ from lsst.sims.skybrightness.utils import mjd2djd
 def generate_sky(mjd0=59560.2, mjd_max=59565.2, timestep=5., timestep_max=15.,
                  outfile=None, outpath=None, nside=32,
                  sunLimit=-12., fieldID=False, airmass_overhead=1.5, dm=0.2,
-                 airmass_limit=3., moon_dist_limit=10., planet_dist_limit=2.,
+                 airmass_limit=2.5, moon_dist_limit=10., planet_dist_limit=2.,
                  alt_limit=86.5, requireStride=3, verbose=True):
     """
     Pre-compute the sky brighntess for a series of mjd dates at the LSST site.
@@ -145,8 +145,6 @@ def generate_sky(mjd0=59560.2, mjd_max=59565.2, timestep=5., timestep_max=15.,
             mags = sm.returnMags()
             for key in filter_names:
                 sky_brightness[key].append(mags[key])
-                if np.inf in mags[key]:
-                    import pdb ; pdb.set_trace()
             dict_of_lists['airmass'].append(sm.airmass)
             dict_of_lists['sunAlts'].append(sm.sunAlt)
             dict_of_lists['mjds'].append(mjd)

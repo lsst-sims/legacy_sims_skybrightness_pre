@@ -1,5 +1,4 @@
 import numpy as np
-from calcM5 import calcM5
 import bandpassUtils as bu
 from lsst.utils import getPackageDir
 
