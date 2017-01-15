@@ -145,6 +145,8 @@ def generate_sky(mjd0=59560.2, mjd_max=59565.2, timestep=5., timestep_max=15.,
             mags = sm.returnMags()
             for key in filter_names:
                 sky_brightness[key].append(mags[key])
+                if np.inf in mags[key]:
+                    import pdb ; pdb.set_trace()
             dict_of_lists['airmass'].append(sm.airmass)
             dict_of_lists['sunAlts'].append(sm.sunAlt)
             dict_of_lists['mjds'].append(mjd)
