@@ -1,0 +1,6 @@
+*.pyc
+data/*.npz
+data/healpix
+data/opsimFields
+.ipynb_checkpoints
+

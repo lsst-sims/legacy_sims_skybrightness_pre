@@ -1,0 +1,7 @@
+setupRequired(numpy)
+setupRequired(healpy)
+setupRequired(sims_utils)
+setupOptional(pyephem)
+setupOptional(sims_skybrightness)
+setupOptional(syseng_throughputs)
+envPrepend(PYTHONPATH, ${PRODUCT_DIR}/python)
