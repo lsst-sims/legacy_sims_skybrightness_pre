@@ -4,6 +4,7 @@ import os
 import healpy as hp
 from lsst.utils import getPackageDir
 import warnings
+from lsst.sims.utils import haversine
 
 __all__ = ['SkyModelPre']
 
@@ -189,7 +190,7 @@ class SkyModelPre(object):
         return airmass
 
     def returnMags(self, mjd, indx=None, apply_mask=True, badval=hp.UNSEEN,
-                   filters=['u', 'g', 'r', 'i', 'z', 'y']):
+                   filters=['u', 'g', 'r', 'i', 'z', 'y'], extrapolate=False):
         """
         Return a full sky map or individual pixels for the input mjd
 
@@ -206,6 +207,9 @@ class SkyModelPre(object):
             Mask value. Defaults to the healpy mask value.
         filters : list
             List of strings for the filters that should be returned.
+        extrapolate : bool (False)
+            In indx is set, extrapolate any masked pixels to be the same as the nearest non-masked
+            value from the full sky map.
 
         Returns
         -------
@@ -263,5 +267,30 @@ class SkyModelPre(object):
                     toMask = np.where(self.info['masks'][left, indx] | self.info['masks'][right, indx] |
                                       np.isinf(sbs[filter_name]))
                     sbs[filter_name][toMask] = badval
+
+        if (indx is not None) & extrapolate:
+            masked_pix = False
+            for filter_name in filters:
+                if badval in sbs[filter_name]:
+                    masked_pix = True
+            if masked_pix:
+                # We have pixels that are masked that we want reasonable values for
+                full_sky_sb = self.returnMags(mjd, apply_mask=False, filters=filters)
+                good = np.where((full_sky_sb[filters[0]] != badval) & ~np.isnan(full_sky_sb[filters[0]]))[0]
+                ra_full = np.radians(self.header['ra'][good])
+                dec_full = np.radians(self.header['dec'][good])
+                for filtername in filters:
+                    full_sky_sb[filtername] = full_sky_sb[filtername][good]
+                # Going to assume the masked pixels are the same in all filters
+                masked_indx = np.where(sbs[filters[0]].ravel() == badval)[0]
+                for i, mi in enumerate(masked_indx):
+                    # Note, this is going to be really slow for many pixels, should use a kdtree
+                    dist = haversine(np.radians(self.header['ra'][indx][i]),
+                                     np.radians(self.header['dec'][indx][i]),
+                                     ra_full, dec_full)
+                    closest = np.where(dist == dist.min())[0]
+                    for filtername in filters:
+                        sbs[filtername].ravel()[mi] = np.min(full_sky_sb[filtername][closest])
+
         return sbs
 
