@@ -1,5 +1,5 @@
 import numpy as np
-from lsst.sims.utils import photo_m5
+from lsst.sims.utils import m5_flat_sed
 from lsst.sims.photUtils import LSSTdefaults
 
 
@@ -33,7 +33,7 @@ def generate_percentiles(nbins=20):
     for filtername in filters:
         # convert surface brightness to m5
         FWHMeff = LSSTdefaults().FWHMeff(filtername)
-        m5_arr = photo_m5(filtername, sky_brightness[filtername], FWHMeff, 30.,
+        m5_arr = m5_flat_sed(filtername, sky_brightness[filtername], FWHMeff, 30.,
                           dict_of_lists['airmass'])
 
         for indx in np.arange(npix):
