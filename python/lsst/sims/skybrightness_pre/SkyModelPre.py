@@ -260,6 +260,8 @@ class SkyModelPre(object):
                     toMask = np.where(self.info['masks'][left, :] | self.info['masks'][right, :] |
                                       np.isinf(sbs[filter_name]))
                     sbs[filter_name][toMask] = badval
+                    sbs[filter_name][np.where(self.sb[filter_name][left, :] == hp.UNSEEN)] = badval
+                    sbs[filter_name][np.where(self.sb[filter_name][right, :] == hp.UNSEEN)] = badval
             else:
                 sbs[filter_name] = self.sb[filter_name][left, indx] * w1 + \
                     self.sb[filter_name][right, indx] * w2
@@ -267,6 +269,8 @@ class SkyModelPre(object):
                     toMask = np.where(self.info['masks'][left, indx] | self.info['masks'][right, indx] |
                                       np.isinf(sbs[filter_name]))
                     sbs[filter_name][toMask] = badval
+                    sbs[filter_name][np.where(self.sb[filter_name][left, :] == hp.UNSEEN)] = badval
+                    sbs[filter_name][np.where(self.sb[filter_name][right, :] == hp.UNSEEN)] = badval
 
         if (indx is not None) & extrapolate:
             masked_pix = False
