@@ -18,39 +18,43 @@ class TestSkyPre(unittest.TestCase):
         mjd = 60291.35423611111
         tmp = cls.sm.returnMags(mjd)
 
-
     def testReturnMags(self):
         """
         Test all the ways ReturnMags can be used
         """
-        sm = self.sm
+        # Check both the healpix and opsim fields
+        sms = [self.sm, sbp.SkyModelPre(preload=False, opsimFields=True)]
         mjds = []
-        for mjd in sm.info['mjds'][100:102]:
+        for mjd in sms[0].info['mjds'][100:102]:
             mjds.append(mjd)
             mjds.append(mjd+.0002)
 
         # Make sure there's an mjd that is between sunrise/set that gets tested
-        diff = sm.info['mjds'][1:] - sm.info['mjds'][0:-1]
-        between = np.where(diff >= sm.header['timestep_max'])[0][0]
-        mjds.append(sm.info['mjds'][between+1] + sm.header['timestep_max'])
+        diff = sms[0].info['mjds'][1:] - sms[0].info['mjds'][0:-1]
+        between = np.where(diff >= sms[0].header['timestep_max'])[0][0]
+        mjds.append(sms[0].info['mjds'][between+1] + sms[0].header['timestep_max'])
 
         indxes = [None, [100, 101]]
         apply_masks = [True, False]
+        apply_planets = [True, False]
         filters = [['u', 'g', 'r', 'i', 'z', 'y'], ['r']]
 
-        for mjd in mjds:
-            for indx in indxes:
-                for am in apply_masks:
-                    for filt in filters:
-                        mags = sm.returnMags(mjd, indx=indx, apply_mask=am, filters=filt)
-                        # Check the filters returned are correct
-                        self.assertEqual(len(filt), len(mags.keys()))
-                        self.assertEqual(set(filt), set(mags.keys()))
-                        airmasses = sm.returnAirmass(mjd, indx=indx)
-                        # Check the magnitudes are correct
-                        if indx is not None:
-                            self.assertEqual(np.size(mags[mags.keys()[0]]), np.size(indx))
-                            self.assertEqual(np.size(airmasses), np.size(indx))
+        for sm in sms:
+            for mjd in mjds:
+                for indx in indxes:
+                    for am in apply_masks:
+                        for planet in apply_planets:
+                            for filt in filters:
+                                mags = sm.returnMags(mjd, indx=indx, apply_mask=am, filters=filt,
+                                                     planet_mask=planet)
+                                # Check the filters returned are correct
+                                self.assertEqual(len(filt), len(mags.keys()))
+                                self.assertEqual(set(filt), set(mags.keys()))
+                                airmasses = sm.returnAirmass(mjd, indx=indx)
+                                # Check the magnitudes are correct
+                                if indx is not None:
+                                    self.assertEqual(np.size(mags[mags.keys()[0]]), np.size(indx))
+                                    self.assertEqual(np.size(airmasses), np.size(indx))
 
     def testCrazyDate(self):
         """

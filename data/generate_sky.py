@@ -124,7 +124,7 @@ def generate_sky(mjd0=59560.2, mjd_max=59565.2, timestep=5., timestep_max=15.,
     filter_names = ['u', 'g', 'r', 'i', 'z', 'y']
 
     # Initialize the relevant lists
-    dict_of_lists = {'airmass': [], 'sunAlts': [], 'mjds': [], 'masks': [],
+    dict_of_lists = {'airmass': [], 'sunAlts': [], 'mjds': [], 'masks': [], 'planet_masks': [],
                      'moonAlts': [], 'moonRAs': [], 'moonDecs': [], 'sunRAs': [],
                      'sunDecs': [], 'moonSunSep': []}
     sky_brightness = {}
@@ -162,6 +162,8 @@ def generate_sky(mjd0=59560.2, mjd_max=59565.2, timestep=5., timestep_max=15.,
 
             mask = np.zeros(np.size(ra), dtype=bool)
             mask.fill(False)
+            planet_mask = np.zeros(np.size(ra), dtype=bool)
+            planet_mask.fill(False)
             # Apply airmass masking limit
             mask[np.where((sm.airmass > airmass_limit) | (sm.airmass < 1.))] = True
 
@@ -176,9 +178,10 @@ def generate_sky(mjd0=59560.2, mjd_max=59565.2, timestep=5., timestep_max=15.,
             for planet in planets:
                 planet.compute(Observatory)
                 distances = utils.haversine(ra_rad, dec_rad, planet.ra, planet.dec)
-                mask[np.where(distances <= np.radians(planet_dist_limit))] = True
+                planet_mask[np.where(distances <= np.radians(planet_dist_limit))] = True
 
             dict_of_lists['masks'].append(mask)
+            dict_of_lists['planet_masks'].append(planet_mask)
             if len(dict_of_lists['airmass']) > 3:
                 if dict_of_lists['mjds'][-2] not in required_mjds:
                     # Check if we can interpolate the second to last sky brightnesses
@@ -239,4 +242,4 @@ if __name__ == "__main__":
     mjds = np.arange(59560, 59560+365.25*nyears+day_pad+366, 366)
     for mjd1, mjd2 in zip(mjds[:-1], mjds[1:]):
         generate_sky(mjd0=mjd1, mjd_max=mjd2, outpath='healpix')
-        generate_sky(mjd0=mjd1, mjd_max=mjd2, outpath='opsimFields', fieldID=True)
+        generate_sky(mjd0=mjd1, mjd_max=mjd2, outpath='opsimFields', fieldID=True, alt_limit=95.)  # Hopefully this gets rid of altitude mask

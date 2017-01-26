@@ -189,7 +189,7 @@ class SkyModelPre(object):
 
         return airmass
 
-    def returnMags(self, mjd, indx=None, apply_mask=True, badval=hp.UNSEEN,
+    def returnMags(self, mjd, indx=None, apply_mask=True, planet_mask=True, badval=hp.UNSEEN,
                    filters=['u', 'g', 'r', 'i', 'z', 'y'], extrapolate=False):
         """
         Return a full sky map or individual pixels for the input mjd
@@ -202,7 +202,9 @@ class SkyModelPre(object):
             indices to interpolate the sky values at. Returns full sky if None. If the class was
             instatiated with opsimFields, indx is the field ID, otherwise it is the healpix ID.
         apply_mask : bool (True)
-            Set sky maps to badval for regions that should be avoided (high airmass, near moon, near planets)
+            Set sky maps to badval for regions that should be avoided (high airmass, near moon)
+        planet_mask : bool (True)
+            Set sky maps to badval near bright planets
         badval : float (-1.6375e30)
             Mask value. Defaults to the healpy mask value.
         filters : list
@@ -223,6 +225,13 @@ class SkyModelPre(object):
         left = np.searchsorted(self.info['mjds'], mjd)-1
         right = left+1
 
+        # Do full sky by default
+        if indx is None:
+            indx = np.arange(self.sb['r'].shape[1])
+            full_sky = True
+        else:
+            full_sky = False
+
         # If we are out of bounds
         if right >= self.info['mjds'].size:
             right -= 1
@@ -237,56 +246,54 @@ class SkyModelPre(object):
         if baseline > self.header['timestep_max']:
             warnings.warn('Requested MJD between sunrise and sunset, returning closest maps')
             diff = np.abs(self.info['mjds'][left:right+1]-mjd)
-            closest_indx = np.array([left, right])[np.where(diff == np.min(diff))]
-            final_result = {}
+            closest_indx = np.array([left, right])[np.where(diff == np.min(diff))].min()
+            sbs = {}
             for filter_name in filters:
-                final_result[filter_name] = self.sb[filter_name][closest_indx, :][0]
-                if apply_mask:
-                    toMask = np.where(self.info['masks'][closest_indx, :][0])
-                    final_result[filter_name][toMask] = badval
-                    final_result[filter_name][np.isinf(final_result[filter_name])] = badval
-                if indx is not None:
-                    final_result[filter_name] = final_result[filter_name][indx]
-            return final_result
-
-        wterm = (mjd - self.info['mjds'][left])/baseline
-        w1 = (1. - wterm)
-        w2 = wterm
-        sbs = {}
-        for filter_name in filters:
-            if indx is None:
-                sbs[filter_name] = self.sb[filter_name][left, :] * w1 + self.sb[filter_name][right, :] * w2
-                if apply_mask:
-                    toMask = np.where(self.info['masks'][left, :] | self.info['masks'][right, :] |
-                                      np.isinf(sbs[filter_name]))
+                sbs[filter_name] = self.sb[filter_name][closest_indx, indx]
+                if planet_mask:
+                    toMask = np.where(self.info['planet_masks'][closest_indx, indx])
                     sbs[filter_name][toMask] = badval
-                    sbs[filter_name][np.where(self.sb[filter_name][left, :] == hp.UNSEEN)] = badval
-                    sbs[filter_name][np.where(self.sb[filter_name][right, :] == hp.UNSEEN)] = badval
-            else:
+                if apply_mask:
+                    toMask = np.where(self.info['masks'][closest_indx, indx])
+                    sbs[filter_name][toMask] = badval
+                sbs[filter_name][np.isinf(sbs[filter_name])] = badval
+                sbs[filter_name][np.where(sbs[filter_name] == hp.UNSEEN)] = badval
+        else:
+            wterm = (mjd - self.info['mjds'][left])/baseline
+            w1 = (1. - wterm)
+            w2 = wterm
+            sbs = {}
+            for filter_name in filters:
                 sbs[filter_name] = self.sb[filter_name][left, indx] * w1 + \
                     self.sb[filter_name][right, indx] * w2
+                if planet_mask:
+                    toMask = np.where(self.info['planet_masks'][left, indx] |
+                                      self.info['planet_masks'][right, indx])
+                    sbs[filter_name][toMask] = badval
                 if apply_mask:
                     toMask = np.where(self.info['masks'][left, indx] | self.info['masks'][right, indx] |
                                       np.isinf(sbs[filter_name]))
                     sbs[filter_name][toMask] = badval
-                    sbs[filter_name][np.where(self.sb[filter_name][left, :] == hp.UNSEEN)] = badval
-                    sbs[filter_name][np.where(self.sb[filter_name][right, :] == hp.UNSEEN)] = badval
+                sbs[filter_name][np.where(sbs[filter_name] == hp.UNSEEN)] = badval
+                sbs[filter_name][np.where(sbs[filter_name] == hp.UNSEEN)] = badval
 
-        if (indx is not None) & extrapolate:
+        # If requested a certain pixel(s), and want to extrapolate.
+        if (not full_sky) & extrapolate:
             masked_pix = False
             for filter_name in filters:
-                if badval in sbs[filter_name]:
+                if (badval in sbs[filter_name]) | (True in np.isnan(sbs[filter_name])):
                     masked_pix = True
             if masked_pix:
                 # We have pixels that are masked that we want reasonable values for
-                full_sky_sb = self.returnMags(mjd, apply_mask=False, filters=filters)
+                full_sky_sb = self.returnMags(mjd, apply_mask=False, planet_mask=False, filters=filters)
                 good = np.where((full_sky_sb[filters[0]] != badval) & ~np.isnan(full_sky_sb[filters[0]]))[0]
                 ra_full = np.radians(self.header['ra'][good])
                 dec_full = np.radians(self.header['dec'][good])
                 for filtername in filters:
                     full_sky_sb[filtername] = full_sky_sb[filtername][good]
                 # Going to assume the masked pixels are the same in all filters
-                masked_indx = np.where(sbs[filters[0]].ravel() == badval)[0]
+                masked_indx = np.where((sbs[filters[0]].ravel() == badval) |
+                                       np.isnan(sbs[filters[0]].ravel()))[0]
                 for i, mi in enumerate(masked_indx):
                     # Note, this is going to be really slow for many pixels, should use a kdtree
                     dist = haversine(np.radians(self.header['ra'][indx][i]),
