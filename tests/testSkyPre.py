@@ -45,7 +45,7 @@ class TestSkyPre(unittest.TestCase):
                     for am in apply_masks:
                         for planet in apply_planets:
                             for filt in filters:
-                                mags = sm.returnMags(mjd, indx=indx, apply_mask=am, filters=filt,
+                                mags = sm.returnMags(mjd, indx=indx, airmass_mask=am, filters=filt,
                                                      planet_mask=planet)
                                 # Check the filters returned are correct
                                 self.assertEqual(len(filt), len(mags.keys()))

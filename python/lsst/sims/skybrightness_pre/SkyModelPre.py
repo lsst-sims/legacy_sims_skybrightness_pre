@@ -189,7 +189,8 @@ class SkyModelPre(object):
 
         return airmass
 
-    def returnMags(self, mjd, indx=None, apply_mask=True, planet_mask=True, badval=hp.UNSEEN,
+    def returnMags(self, mjd, indx=None, airmass_mask=True, planet_mask=True,
+                   moon_mask=True, zenith_mask=True, badval=hp.UNSEEN,
                    filters=['u', 'g', 'r', 'i', 'z', 'y'], extrapolate=False):
         """
         Return a full sky map or individual pixels for the input mjd
@@ -201,10 +202,14 @@ class SkyModelPre(object):
         indx : List of int(s) (None)
             indices to interpolate the sky values at. Returns full sky if None. If the class was
             instatiated with opsimFields, indx is the field ID, otherwise it is the healpix ID.
-        apply_mask : bool (True)
-            Set sky maps to badval for regions that should be avoided (high airmass, near moon)
+        airmass_mask : bool (True)
+            Set high (>2.5) airmass pixels to badval.
         planet_mask : bool (True)
-            Set sky maps to badval near bright planets
+            Set sky maps to badval near (2 degrees) bright planets.
+        moon_mask : bool (True)
+            Set sky maps near (10 degrees) the moon to badval.
+        zenith_mask : bool (True)
+            Set sky maps at high altitude (>86.5) to badval.
         badval : float (-1.6375e30)
             Mask value. Defaults to the healpy mask value.
         filters : list
@@ -221,6 +226,9 @@ class SkyModelPre(object):
         """
         if (mjd < self.loaded_range.min() or (mjd > self.loaded_range.max())):
             self._load_data(mjd)
+
+        mask_rules = {'airmass': airmass_mask, 'planet': planet_mask,
+                      'moon': moon_mask, 'zenith': zenith_mask}
 
         left = np.searchsorted(self.info['mjds'], mjd)-1
         right = left+1
@@ -250,12 +258,10 @@ class SkyModelPre(object):
             sbs = {}
             for filter_name in filters:
                 sbs[filter_name] = self.sb[filter_name][closest_indx, indx]
-                if planet_mask:
-                    toMask = np.where(self.info['planet_masks'][closest_indx, indx])
-                    sbs[filter_name][toMask] = badval
-                if apply_mask:
-                    toMask = np.where(self.info['masks'][closest_indx, indx])
-                    sbs[filter_name][toMask] = badval
+                for mask_name in mask_rules:
+                    if mask_rules[mask_name]:
+                        toMask = np.where(self.info[mask_name+'_masks'][closest_indx, indx])
+                        sbs[filter_name][toMask] = badval
                 sbs[filter_name][np.isinf(sbs[filter_name])] = badval
                 sbs[filter_name][np.where(sbs[filter_name] == hp.UNSEEN)] = badval
         else:
@@ -266,14 +272,12 @@ class SkyModelPre(object):
             for filter_name in filters:
                 sbs[filter_name] = self.sb[filter_name][left, indx] * w1 + \
                     self.sb[filter_name][right, indx] * w2
-                if planet_mask:
-                    toMask = np.where(self.info['planet_masks'][left, indx] |
-                                      self.info['planet_masks'][right, indx])
-                    sbs[filter_name][toMask] = badval
-                if apply_mask:
-                    toMask = np.where(self.info['masks'][left, indx] | self.info['masks'][right, indx] |
-                                      np.isinf(sbs[filter_name]))
-                    sbs[filter_name][toMask] = badval
+                for mask_name in mask_rules:
+                    if mask_rules[mask_name]:
+                        toMask = np.where(self.info[mask_name+'_masks'][left, indx] |
+                                          self.info[mask_name+'_masks'][right, indx] |
+                                          np.isinf(sbs[filter_name]))
+                        sbs[filter_name][toMask] = badval
                 sbs[filter_name][np.where(sbs[filter_name] == hp.UNSEEN)] = badval
                 sbs[filter_name][np.where(sbs[filter_name] == hp.UNSEEN)] = badval
 
@@ -285,7 +289,8 @@ class SkyModelPre(object):
                     masked_pix = True
             if masked_pix:
                 # We have pixels that are masked that we want reasonable values for
-                full_sky_sb = self.returnMags(mjd, apply_mask=False, planet_mask=False, filters=filters)
+                full_sky_sb = self.returnMags(mjd, airmass_mask=False, planet_mask=False, moon_mask=False,
+                                              zenith_mask=False, filters=filters)
                 good = np.where((full_sky_sb[filters[0]] != badval) & ~np.isnan(full_sky_sb[filters[0]]))[0]
                 ra_full = np.radians(self.header['ra'][good])
                 dec_full = np.radians(self.header['dec'][good])

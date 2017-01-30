@@ -124,9 +124,9 @@ def generate_sky(mjd0=59560.2, mjd_max=59565.2, timestep=5., timestep_max=15.,
     filter_names = ['u', 'g', 'r', 'i', 'z', 'y']
 
     # Initialize the relevant lists
-    dict_of_lists = {'airmass': [], 'sunAlts': [], 'mjds': [], 'masks': [], 'planet_masks': [],
+    dict_of_lists = {'airmass': [], 'sunAlts': [], 'mjds': [], 'airmass_masks': [], 'planet_masks': [],
                      'moonAlts': [], 'moonRAs': [], 'moonDecs': [], 'sunRAs': [],
-                     'sunDecs': [], 'moonSunSep': []}
+                     'sunDecs': [], 'moonSunSep': [], 'moon_masks': [], 'zenith_masks': []}
     sky_brightness = {}
     for filter_name in filter_names:
         sky_brightness[filter_name] = []
@@ -135,6 +135,7 @@ def generate_sky(mjd0=59560.2, mjd_max=59565.2, timestep=5., timestep_max=15.,
     last_5_mags = []
     last_5_mjds = []
 
+    full_masks = []
     for mjd in mjds:
         progress = (mjd-mjd0)/length*100
         text = "\rprogress = %.1f%%"%progress
@@ -160,35 +161,41 @@ def generate_sky(mjd0=59560.2, mjd_max=59565.2, timestep=5., timestep_max=15.,
                 del last_5_mjds[0]
                 del last_5_mags[0]
 
-            mask = np.zeros(np.size(ra), dtype=bool)
-            mask.fill(False)
-            planet_mask = np.zeros(np.size(ra), dtype=bool)
-            planet_mask.fill(False)
+            masks = {'moon': None, 'airmass': None, 'planet': None, 'zenith': None}
+            for mask in masks:
+                masks[mask] = np.zeros(np.size(ra), dtype=bool)
+                masks[mask].fill(False)
+
             # Apply airmass masking limit
-            mask[np.where((sm.airmass > airmass_limit) | (sm.airmass < 1.))] = True
+            masks['airmass'][np.where((sm.airmass > airmass_limit) | (sm.airmass < 1.))] = True
 
             # Apply moon distance limit
-            mask[np.where(sm.moonTargSep <= np.radians(moon_dist_limit))] = True
+            masks['moon'][np.where(sm.moonTargSep <= np.radians(moon_dist_limit))] = True
 
             # Apply altitude limit
-            mask[np.where(sm.alts >= alt_limit_rad)] = True
+            masks['zenith'][np.where(sm.alts >= alt_limit_rad)] = True
 
             # Apply the planet distance limits
             Observatory.date = mjd2djd(mjd)
             for planet in planets:
                 planet.compute(Observatory)
                 distances = utils.haversine(ra_rad, dec_rad, planet.ra, planet.dec)
-                planet_mask[np.where(distances <= np.radians(planet_dist_limit))] = True
+                masks['planet'][np.where(distances <= np.radians(planet_dist_limit))] = True
 
-            dict_of_lists['masks'].append(mask)
-            dict_of_lists['planet_masks'].append(planet_mask)
+            full_mask = np.zeros(np.size(ra), dtype=bool)
+            full_mask.fill(False)
+            for key in masks:
+                dict_of_lists[key+'_masks'].append(masks[key])
+                full_mask[masks[key]] = True
+                full_masks.append(full_mask)
+
             if len(dict_of_lists['airmass']) > 3:
                 if dict_of_lists['mjds'][-2] not in required_mjds:
                     # Check if we can interpolate the second to last sky brightnesses
                     overhead = np.where((dict_of_lists['airmass'][-1] <= airmass_overhead) &
                                         (dict_of_lists['airmass'][-2] <= airmass_overhead) &
-                                        (~dict_of_lists['masks'][-1]) &
-                                        (~dict_of_lists['masks'][-2]))
+                                        (~full_masks[-1]) &
+                                        (~full_masks[-2]))
 
                     if (np.size(overhead[0]) > 0) & (dict_of_lists['mjds'][-1] -
                                                      dict_of_lists['mjds'][-3] < timestep_max):
@@ -241,5 +248,6 @@ if __name__ == "__main__":
     day_pad = 50.
     mjds = np.arange(59560, 59560+365.25*nyears+day_pad+366, 366)
     for mjd1, mjd2 in zip(mjds[:-1], mjds[1:]):
+        generate_sky(mjd0=mjd1, mjd_max=mjd2, outpath='opsimFields', fieldID=True)
         generate_sky(mjd0=mjd1, mjd_max=mjd2, outpath='healpix')
-        generate_sky(mjd0=mjd1, mjd_max=mjd2, outpath='opsimFields', fieldID=True, alt_limit=95.)  # Hopefully this gets rid of altitude mask
+        
