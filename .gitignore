@@ -3,4 +3,7 @@ data/*.npz
 data/healpix
 data/opsimFields
 .ipynb_checkpoints
-
+.scon*
+config.log
+*.cfgc
+python/lsst/sims/skybrightness
