@@ -15,7 +15,7 @@ class SkyModelPre(object):
     arbitrary dates.
     """
 
-    def __init__(self, data_path=None, opsimFields=False, preload=True):
+    def __init__(self, data_path=None, opsimFields=False, preload=True, speedLoad=False):
 
         self.info = None
         self.sb = None
@@ -51,12 +51,15 @@ class SkyModelPre(object):
         self.mjd_right = np.array(mjd_right)
 
         # Go ahead and load the first one by default
-        if preload:
-            self._load_data(self.mjd_left[0])
+        if speedLoad:
+            self._load_data(59580., filename=os.path.join(data_dir, 'healpix/small_example.npz_small'))
         else:
-            self.loaded_range = np.array([-1])
+            if preload:
+                self._load_data(self.mjd_left[0])
+            else:
+                self.loaded_range = np.array([-1])
 
-    def _load_data(self, mjd):
+    def _load_data(self, mjd, filename=None):
         """
         Load up the .npz file to interpolate things
         """
@@ -67,7 +70,8 @@ class SkyModelPre(object):
             raise ValueError('MJD = %f is out of range for the files found (%f-%f)' % (mjd,
                                                                                        self.mjd_left.min(),
                                                                                        self.mjd_right.max()))
-        filename = self.files[file_indx.min()]
+        if filename is None:
+            filename = self.files[file_indx.min()]
 
         data = np.load(filename)
         self.info = data['dict_of_lists'][()]
