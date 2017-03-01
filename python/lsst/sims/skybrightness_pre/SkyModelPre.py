@@ -177,8 +177,9 @@ class SkyModelPre(object):
             diff = np.abs(self.info['mjds'][left:right+1]-mjd)
             closest_indx = np.array([left, right])[np.where(diff == np.min(diff))]
             airmass = self.info['airmass'][closest_indx, indx]
-            mask = np.where((self.info['airmass'][closest_indx, indx] < 1.) |
-                            (self.info['airmass'][closest_indx, indx] > maxAM))
+            mask = np.where((self.info['airmass'][closest_indx, indx].ravel() < 1.) |
+                            (self.info['airmass'][closest_indx, indx].ravel() > maxAM))
+            airmass = airmass.ravel()
 
         else:
             wterm = (mjd - self.info['mjds'][left])/baseline
