@@ -15,8 +15,8 @@ class TestSkyPre(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         try:
-            cls.sm = sbp.SkyModelPre(preload=False)
-            mjd = 60291.35423611111
+            cls.sm = sbp.SkyModelPre(speedLoad=True)
+            mjd = cls.sm.info['mjds'][1]+4./60./24.
             tmp = cls.sm.returnMags(mjd)
             cls.data_present = True
         except:
@@ -28,7 +28,7 @@ class TestSkyPre(unittest.TestCase):
         """
         # Check both the healpix and opsim fields
         if self.data_present:
-            sms = [self.sm, sbp.SkyModelPre(preload=False, opsimFields=True)]
+            sms = [self.sm, sbp.SkyModelPre(speedLoad=True, opsimFields=True)]
             mjds = []
             for mjd in sms[0].info['mjds'][100:102]:
                 mjds.append(mjd)
@@ -61,6 +61,7 @@ class TestSkyPre(unittest.TestCase):
                                         self.assertEqual(np.size(mags[list(mags.keys())[0]]), np.size(indx))
                                         self.assertEqual(np.size(airmasses), np.size(indx))
 
+    @unittest.skip("13 March 2017--Takes a long time to load the data")
     def testCrazyDate(self):
         """
         Test date that falls at akward time
@@ -117,7 +118,8 @@ class TestSkyPre(unittest.TestCase):
                 moon_dist = haversine(moon.ra, moon.dec, pre_calced['moonRA'], pre_calced['moonDec'])
                 self.assertAlmostEqual(moon_dist, 0., places=arcmin_places)
 
-                self.assertAlmostEqual(pre_calced['moonSunSep'], moon.phase/100.*180., places=arcmin_places)
+                self.assertAlmostEqual(np.radians(pre_calced['moonSunSep']),
+                                       np.radians(moon.phase/100.*180.), places=arcmin_places)
 
     def testSBP(self):
         """
@@ -155,7 +157,7 @@ class TestSkyPre(unittest.TestCase):
                     # Check that the interpolated airmass is close
                     assert(np.max(np.abs(diff)) < am_tol)
 
-                    for filtername in list(sky1.keys()):
+                    for filtername in sky1:
                         good = np.where((am1 < mag_am_limit) & (sky2[filtername] != hp.UNSEEN) &
                                         (np.isfinite(sky1[filtername])))
                         diff = sky1[filtername][good] - sky2[filtername][good]
