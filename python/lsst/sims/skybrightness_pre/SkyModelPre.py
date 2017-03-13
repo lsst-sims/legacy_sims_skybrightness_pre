@@ -1,3 +1,4 @@
+from builtins import object
 import numpy as np
 import glob
 import os
@@ -78,7 +79,7 @@ class SkyModelPre(object):
         self.sb = data['sky_brightness'][()]
         self.header = data['header'][()]
         data.close()
-        self.filter_names = self.sb.keys()
+        self.filter_names = list(self.sb.keys())
 
         if not self.opsimFields:
             self.nside = hp.npix2nside(self.sb[self.filter_names[0]][0, :].size)
@@ -169,7 +170,7 @@ class SkyModelPre(object):
             baseline = self.info['mjds'][right] - self.info['mjds'][left]
 
         if indx is None:
-            result_size = self.sb[self.sb.keys()[0]][left, :].size
+            result_size = self.sb[list(self.sb.keys())[0]][left, :].size
             indx = np.arange(result_size)
         else:
             result_size = len(indx)

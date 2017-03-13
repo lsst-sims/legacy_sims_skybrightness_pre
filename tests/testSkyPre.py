@@ -53,12 +53,12 @@ class TestSkyPre(unittest.TestCase):
                                     mags = sm.returnMags(mjd, indx=indx, airmass_mask=am, filters=filt,
                                                          planet_mask=planet)
                                     # Check the filters returned are correct
-                                    self.assertEqual(len(filt), len(mags.keys()))
+                                    self.assertEqual(len(filt), len(list(mags.keys())))
                                     self.assertEqual(set(filt), set(mags.keys()))
                                     airmasses = sm.returnAirmass(mjd, indx=indx)
                                     # Check the magnitudes are correct
                                     if indx is not None:
-                                        self.assertEqual(np.size(mags[mags.keys()[0]]), np.size(indx))
+                                        self.assertEqual(np.size(mags[list(mags.keys())[0]]), np.size(indx))
                                         self.assertEqual(np.size(airmasses), np.size(indx))
 
     def testCrazyDate(self):
@@ -155,7 +155,7 @@ class TestSkyPre(unittest.TestCase):
                     # Check that the interpolated airmass is close
                     assert(np.max(np.abs(diff)) < am_tol)
 
-                    for filtername in sky1.keys():
+                    for filtername in list(sky1.keys()):
                         good = np.where((am1 < mag_am_limit) & (sky2[filtername] != hp.UNSEEN) &
                                         (np.isfinite(sky1[filtername])))
                         diff = sky1[filtername][good] - sky2[filtername][good]

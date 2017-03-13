@@ -1,3 +1,4 @@
+from builtins import zip
 import numpy as np
 from lsst.sims.utils import m5_flat_sed
 from lsst.sims.photUtils import LSSTdefaults
@@ -19,8 +20,8 @@ def generate_percentiles(nbins=20):
 
     npix = sky_brightness['r'].shape[-1]
 
-    histograms = np.zeros((nbins, npix), dtype=zip(filters, [float]*6))
-    histogram_npts = np.zeros(npix, dtype=zip(filters, [int]*6))
+    histograms = np.zeros((nbins, npix), dtype=list(zip(filters, [float]*6)))
+    histogram_npts = np.zeros(npix, dtype=list(zip(filters, [int]*6)))
 
     # find the indices of all the evenly spaced mjd values
     even_mjd_indx = np.in1d(dict_of_lists['mjds'], required_mjds)
