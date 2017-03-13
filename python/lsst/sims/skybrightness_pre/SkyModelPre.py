@@ -33,7 +33,7 @@ class SkyModelPre(object):
             else:
                 data_path = os.path.join(data_dir, 'healpix')
 
-        self.files = glob.glob(os.path.join(data_path, '*.npz'))
+        self.files = glob.glob(os.path.join(data_path, '*.npz*'))
         if len(self.files) == 0:
             errmssg = 'Failed to find pre-computed .npz files. '
             errmssg += 'Copy data from NCSA with sims_skybrightness_pre/data/data_down.sh \n'
