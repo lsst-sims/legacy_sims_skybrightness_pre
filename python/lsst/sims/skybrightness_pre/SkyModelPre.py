@@ -42,7 +42,10 @@ class SkyModelPre(object):
         mjd_left = []
         mjd_right = []
         # Expect filenames of the form mjd1_mjd2.npz, e.g., 59632.155_59633.2.npz
-        for filename in self.files:
+        big_files = glob.glob(os.path.join(data_path, '*.npz'))
+        if len(big_files) != 0:
+            self.files = big_files
+        for filename in big_files:
             temp = os.path.split(filename)[-1].replace('.npz', '').split('_')
             mjd_left.append(float(temp[0]))
             mjd_right.append(float(temp[1]))
