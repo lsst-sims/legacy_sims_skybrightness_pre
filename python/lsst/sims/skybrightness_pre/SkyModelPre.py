@@ -85,8 +85,9 @@ class SkyModelPre(object):
 
         if not self.opsimFields:
             self.nside = hp.npix2nside(self.sb[self.filter_names[0]][0, :].size)
-        self.loaded_range = np.array([self.mjd_left[file_indx], self.mjd_right[file_indx]])
-        if filename is not None:
+        if filename is None:
+            self.loaded_range = np.array([self.mjd_left[file_indx], self.mjd_right[file_indx]])
+        else:
             self.loaded_range = np.array([self.info['mjds'].min(), self.info['mjds'].max()])
 
     def returnSunMoon(self, mjd):
