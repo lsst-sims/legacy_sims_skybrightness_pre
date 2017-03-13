@@ -67,13 +67,13 @@ class SkyModelPre(object):
         Load up the .npz file to interpolate things
         """
 
-        # Figure out which file to load.
-        file_indx = np.where((mjd >= self.mjd_left) & (mjd <= self.mjd_right))[0]
-        if np.size(file_indx) == 0:
-            raise ValueError('MJD = %f is out of range for the files found (%f-%f)' % (mjd,
-                                                                                       self.mjd_left.min(),
-                                                                                       self.mjd_right.max()))
         if filename is None:
+            # Figure out which file to load.
+            file_indx = np.where((mjd >= self.mjd_left) & (mjd <= self.mjd_right))[0]
+            if np.size(file_indx) == 0:
+                raise ValueError('MJD = %f is out of range for the files found (%f-%f)' % (mjd,
+                                                                                           self.mjd_left.min(),
+                                                                                           self.mjd_right.max()))
             filename = self.files[file_indx.min()]
 
         data = np.load(filename)
