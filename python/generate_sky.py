@@ -1,3 +1,5 @@
+from __future__ import print_function
+from builtins import zip
 import numpy as np
 import lsst.sims.skybrightness as sb
 import lsst.sims.utils as utils
@@ -46,7 +48,7 @@ def generate_sky(mjd0=59560.2, duration=0.01, timestep=5., timestep_max=20.,
 
     if fieldID:
         field_data = np.loadtxt('fieldID.dat', delimiter='|', skiprows=1,
-                                dtype=zip(['id', 'ra', 'dec'], [int, float, float]))
+                                dtype=list(zip(['id', 'ra', 'dec'], [int, float, float])))
         ra = field_data['ra']
         dec = field_data['dec']
     else:
@@ -54,8 +56,8 @@ def generate_sky(mjd0=59560.2, duration=0.01, timestep=5., timestep_max=20.,
         ra, dec = utils.hpid2RaDec(nside, hpindx)
 
     if verbose:
-        print 'using %i points on the sky' % ra.size
-        print 'using %i mjds' % mjds.size
+        print('using %i points on the sky' % ra.size)
+        print('using %i mjds' % mjds.size)
 
     # Set up the sky brightness model
     sm = sb.SkyModel(mags=True)
@@ -113,7 +115,7 @@ def generate_sky(mjd0=59560.2, duration=0.01, timestep=5., timestep_max=20.,
                             del dict_of_lists[key][-2]
                         for key in sky_brightness:
                             del sky_brightness[key][-2]
-    print ''
+    print('')
 
     for key in dict_of_lists:
         dict_of_lists[key] = np.array(dict_of_lists[key])
