@@ -16,11 +16,12 @@ class SkyModelPre(object):
     arbitrary dates.
     """
 
-    def __init__(self, data_path=None, opsimFields=False, preload=True, speedLoad=False):
+    def __init__(self, data_path=None, opsimFields=False, preload=True, speedLoad=False, verbose=False):
 
         self.info = None
         self.sb = None
         self.opsimFields = opsimFields
+        self.verbose = verbose
 
         # Look in default location for .npz files to load
         if 'SIMS_SKYBRIGHTNESS_DATA' in os.environ:
@@ -76,19 +77,27 @@ class SkyModelPre(object):
                                                                                            self.mjd_left.min(),
                                                                                            self.mjd_right.max()))
             filename = self.files[file_indx.min()]
+            self.loaded_range = np.array([self.mjd_left[file_indx], self.mjd_right[file_indx]])
+        else:
+            self.loaded_range = None
 
+        if self.verbose:
+            print('Loading file %s' % os.path.split(filename)[1])
         data = np.load(filename)
+
         self.info = data['dict_of_lists'][()]
         self.sb = data['sky_brightness'][()]
         self.header = data['header'][()]
         data.close()
         self.filter_names = list(self.sb.keys())
 
+        if self.verbose:
+            print('%s loaded' % os.path.split(filename)[1])
+
         if not self.opsimFields:
             self.nside = hp.npix2nside(self.sb[self.filter_names[0]][0, :].size)
-        if filename is None:
-            self.loaded_range = np.array([self.mjd_left[file_indx], self.mjd_right[file_indx]])
-        else:
+
+        if self.loaded_range is None:
             self.loaded_range = np.array([self.info['mjds'].min(), self.info['mjds'].max()])
 
     def returnSunMoon(self, mjd):
