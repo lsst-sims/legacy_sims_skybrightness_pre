@@ -34,8 +34,11 @@ def generate_percentiles(nbins=20):
     for filtername in filters:
         # convert surface brightness to m5
         FWHMeff = LSSTdefaults().FWHMeff(filtername)
+        # increase as a function of airmass
+        airmass_correction = np.power(dict_of_lists['airmass'], 0.6)
+        FWHMeff *= airmass_correction
         m5_arr = m5_flat_sed(filtername, sky_brightness[filtername], FWHMeff, 30.,
-                          dict_of_lists['airmass'])
+                             dict_of_lists['airmass'])
 
         for indx in np.arange(npix):
             m5s = m5_arr[:, indx]
