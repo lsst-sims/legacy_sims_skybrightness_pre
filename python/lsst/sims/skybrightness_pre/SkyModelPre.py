@@ -83,12 +83,20 @@ class SkyModelPre(object):
 
         if self.verbose:
             print('Loading file %s' % os.path.split(filename)[1])
-        data = np.load(filename)
-
+        # Add encoding kwarg to restore Python 2.7 generated files
+        data = np.load(filename, encoding='bytes')
         self.info = data['dict_of_lists'][()]
         self.sb = data['sky_brightness'][()]
         self.header = data['header'][()]
         data.close()
+
+        # Step to make sure keys are strings not bytes
+        all_dicts = [self.info, self.sb, self.header]
+        for selfDict in all_dicts:
+            for key in list(selfDict.keys()):
+                if type(key) != str:
+                    selfDict[key.decode("utf-8")] = selfDict.pop(key)
+
         self.filter_names = list(self.sb.keys())
 
         if self.verbose:
