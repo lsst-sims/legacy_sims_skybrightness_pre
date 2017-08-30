@@ -282,7 +282,7 @@ class SkyModelPre(object):
         # Check if we are between sunrise/set
         if baseline > self.header['timestep_max']:
             warnings.warn('Requested MJD between sunrise and sunset, returning closest maps')
-            diff = np.abs(self.info['mjds'][left:right+1]-mjd)
+            diff = np.abs(self.info['mjds'][left.max():right.max()+1]-mjd)
             closest_indx = np.array([left, right])[np.where(diff == np.min(diff))].min()
             sbs = {}
             for filter_name in filters:
