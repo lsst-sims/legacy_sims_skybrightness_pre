@@ -31,6 +31,14 @@ class M5percentiles(object):
         self.nside = hp.npix2nside(self.npix)
         self.nbins = float(self.m5_histograms['u'][0, :].size)
 
+    def dark_map(self, filtername='r', nside_out=64):
+        """Return the darkest every healpixel gets
+        """
+        result = self.m5_histograms[filtername][:, -1]
+        if self.nside != nside_out:
+            result = hp.ud_grade(result, nside_out=nside_out)
+        return result
+
     def m5map2percentile(self, m5map, filtername='r'):
         """
         Convert a healpix map to a percentile map
