@@ -5,7 +5,7 @@ import os
 import healpy as hp
 from lsst.utils import getPackageDir
 import warnings
-from lsst.sims.utils import haversine
+from lsst.sims.utils import _angularSeparation
 
 __all__ = ['SkyModelPre']
 
@@ -330,9 +330,9 @@ class SkyModelPre(object):
                                        np.isnan(sbs[filters[0]].ravel()))[0]
                 for i, mi in enumerate(masked_indx):
                     # Note, this is going to be really slow for many pixels, should use a kdtree
-                    dist = haversine(np.radians(self.header['ra'][indx][i]),
-                                     np.radians(self.header['dec'][indx][i]),
-                                     ra_full, dec_full)
+                    dist = _angularSeparation(np.radians(self.header['ra'][indx][i]),
+                                              np.radians(self.header['dec'][indx][i]),
+                                              ra_full, dec_full)
                     closest = np.where(dist == dist.min())[0]
                     for filtername in filters:
                         sbs[filtername].ravel()[mi] = np.min(full_sky_sb[filtername][closest])

@@ -7,7 +7,7 @@ import numpy as np
 import lsst.sims.utils as utils
 import ephem
 from lsst.sims.skybrightness.utils import mjd2djd
-from lsst.sims.utils import haversine
+from lsst.sims.utils import _angularSeparation
 
 
 class TestSkyPre(unittest.TestCase):
@@ -111,11 +111,11 @@ class TestSkyPre(unittest.TestCase):
                 pre_calced = sm.returnSunMoon(mjd)
 
                 self.assertLess(np.abs(pre_calced['sunAlt']-sun.alt), arcmin_places)
-                sun_dist = haversine(sun.ra, sun.dec, pre_calced['sunRA'], pre_calced['sunDec'])
+                sun_dist = _angularSeparation(sun.ra, sun.dec, pre_calced['sunRA'], pre_calced['sunDec'])
                 self.assertAlmostEqual(sun_dist, 0., places=arcmin_places)
 
                 self.assertLess(np.abs(pre_calced['moonAlt']-moon.alt), arcmin_places)
-                moon_dist = haversine(moon.ra, moon.dec, pre_calced['moonRA'], pre_calced['moonDec'])
+                moon_dist = _angularSeparation(moon.ra, moon.dec, pre_calced['moonRA'], pre_calced['moonDec'])
                 self.assertAlmostEqual(moon_dist, 0., places=arcmin_places)
 
                 self.assertAlmostEqual(np.radians(pre_calced['moonSunSep']),
