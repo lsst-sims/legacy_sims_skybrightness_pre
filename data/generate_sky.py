@@ -255,7 +255,10 @@ if __name__ == "__main__":
     # mjds = np.arange(59560, 59560+365.25*nyears+day_pad+366, 366)
     # 6-months
     mjds = np.arange(59560, 59560+365.25*nyears+day_pad+366/2., 366/2.)
+    i=0
     for mjd1, mjd2 in zip(mjds[:-1], mjds[1:]):
+        print('Generating file %i') % i
         # generate_sky(mjd0=mjd1, mjd_max=mjd2, outpath='opsimFields', fieldID=True)
         generate_sky(mjd0=mjd1, mjd_max=mjd2, outpath='healpix_6mo')
+        i += 1
         
