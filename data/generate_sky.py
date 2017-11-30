@@ -249,13 +249,13 @@ if __name__ == "__main__":
     # Make a quick small one for speed loading
     # generate_sky(mjd0=59579, mjd_max=59579+10., outpath='healpix', outfile='small_example.npz_small')
 
-    nyears = 13
-    day_pad = 50.
+    nyears = 20  # 13
+    day_pad = 30.
     # Full year
     # mjds = np.arange(59560, 59560+365.25*nyears+day_pad+366, 366)
     # 6-months
     mjds = np.arange(59560, 59560+365.25*nyears+day_pad+366/2., 366/2.)
     for mjd1, mjd2 in zip(mjds[:-1], mjds[1:]):
-        generate_sky(mjd0=mjd1, mjd_max=mjd2, outpath='opsimFields', fieldID=True)
-        # generate_sky(mjd0=mjd1, mjd_max=mjd2, outpath='healpix')
+        # generate_sky(mjd0=mjd1, mjd_max=mjd2, outpath='opsimFields', fieldID=True)
+        generate_sky(mjd0=mjd1, mjd_max=mjd2, outpath='healpix_6mo')
         
