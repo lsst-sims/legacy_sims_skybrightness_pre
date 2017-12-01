@@ -81,7 +81,7 @@ def generate_sky(mjd0=59560.2, mjd_max=59565.2, timestep=5., timestep_max=15.,
     sunAlts = np.zeros(mjds.size, dtype=float)
 
     if outfile is None:
-        outfile = '%i_%i.npy' % (mjds.min(), mjds.max())
+        outfile = '%i_%i.npz' % (mjds.min(), mjds.max())
     if outpath is not None:
         outfile = os.path.join(outpath, outfile)
 
@@ -241,7 +241,14 @@ def generate_sky(mjd0=59560.2, mjd_max=59565.2, timestep=5., timestep_max=15.,
               'ra': ra, 'dec': dec, 'verbose': verbose, 'required_mjds': required_mjds,
               'version': version, 'fingerprint': fingerprint}
 
-    np.save(outfile, dict_of_lists = dict_of_lists, sky_brightness=sky_brightness, header=header)
+    np.savez(outfile, dict_of_lists = dict_of_lists, header=header)
+    # Convert sky_brightness to a true array so it's easier to save
+    types = [float]*len(sky_brightness.keys())
+    result = np.zeros(sky_brightness[list(sky_brightness.keys())[0]].shape,
+                      dtype=list(zip(sky_brightness.keys(), types)))
+    for key in sky_brightness.keys():
+        result[key] = sky_brightness[key]
+    np.save(outfile[:-3]+'npy', result)
 
 if __name__ == "__main__":
 
