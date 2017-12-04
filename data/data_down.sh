@@ -35,6 +35,7 @@ done
 # Copy data down from NCSA
 if [ ${HEALPIX} -eq 1 ]; then
 	${FETCH_CMD} ${DATA_URL}/healpix/*.npz* healpix/
+  ${FETCH_CMD} ${DATA_URL}/healpix/*.npy* healpix/
 fi
 if [ ${OPSIM_FIELDS} -eq 1 ]; then
 	${FETCH_CMD} ${DATA_URL}/opsimFields/*.npz opsimFields/
