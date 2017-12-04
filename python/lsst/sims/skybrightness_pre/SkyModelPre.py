@@ -89,7 +89,7 @@ class SkyModelPre(object):
                 raise ValueError('MJD = %f is out of range for the files found (%f-%f)' % (mjd,
                                                                                            self.mjd_left.min(),
                                                                                            self.mjd_right.max()))
-            filename = self.files[file_indx.min()]
+            filename = self.files[file_indx.max()]
             self.loaded_range = np.array([self.mjd_left[file_indx], self.mjd_right[file_indx]])
         else:
             self.loaded_range = None

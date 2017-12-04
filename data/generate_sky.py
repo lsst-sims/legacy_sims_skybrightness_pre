@@ -214,7 +214,7 @@ def generate_sky(mjd0=59560.2, mjd_max=59565.2, timestep=5., timestep_max=15.,
                                 for filter_name in filter_names:
                                     interp_sky = w1 * sky_brightness[filter_name][-3][overhead]
                                     interp_sky += w2 * sky_brightness[filter_name][-1][overhead]
-                                    diff = np.abs(last_5_mags[indx][filter_name][overhead]-interp_sky)
+                                    diff = np.abs(last_5_mags[int(indx)][filter_name][overhead]-interp_sky)
                                     if np.size(diff[~np.isnan(diff)]) > 0:
                                         if np.max(diff[~np.isnan(diff)]) > dm:
                                             can_interp = False
@@ -250,7 +250,7 @@ if __name__ == "__main__":
     # generate_sky(mjd0=59579, mjd_max=59579+10., outpath='healpix', outfile='small_example.npz_small')
 
     nyears = 20  # 13
-    day_pad = 30.
+    day_pad = 30
     # Full year
     # mjds = np.arange(59560, 59560+365.25*nyears+day_pad+366, 366)
     # 6-months
