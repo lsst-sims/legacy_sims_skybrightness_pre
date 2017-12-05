@@ -1,6 +1,11 @@
 import ipyparallel as ipp
 import numpy as np
 
+# Generate all the sky save files in parallel
+# start engines first with, e.g., ipcluster start -n 4
+# Very random note, the engines may need to be started in the same directory as the code? I
+# never understand python name-space issues, especially in parallel.
+
 if __name__ == "__main__":
 
     # Connect to parallel clients

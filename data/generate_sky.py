@@ -8,9 +8,6 @@ import sys
 import os
 import ephem
 from lsst.sims.skybrightness.utils import mjd2djd
-import ipyparallel as ipp
-
-# Running in parallel, start engines first with, e.g., ipcluster start -n 4
 
 
 def generate_sky(mjd0=59560.2, mjd_max=59565.2, timestep=5., timestep_max=15.,
@@ -255,11 +252,9 @@ def generate_sky(mjd0=59560.2, mjd_max=59565.2, timestep=5., timestep_max=15.,
 
 if __name__ == "__main__":
 
-    # Connect to parallel clients
-    rc = ipp.Client()
-    dview = rc[:]
+    
     # Make a quick small one for speed loading
-    #generate_sky(mjd0=59579, mjd_max=59579+10., outpath='healpix_6mo', outfile='small_example.npz_small')
+    generate_sky(mjd0=59579, mjd_max=59579+10., outpath='healpix_6mo', outfile='small_example.npz_small')
 
     nyears = 20  # 13
     day_pad = 30
@@ -267,13 +262,10 @@ if __name__ == "__main__":
     # mjds = np.arange(59560, 59560+365.25*nyears+day_pad+366, 366)
     # 6-months
     mjds = np.arange(59560, 59560+366*nyears+366/2., 366/2.)
-
-    result = dview.map_sync(lambda mjd1, mjd2:
-                            generate_sky(mjd0=mjd1, mjd_max=mjd2+day_pad,
-                                         outpath='healpix_6mo', verbose=False),
-                            mjds[:-1], mjds[1:])
-    #for mjd1, mjd2 in zip(mjds[:-1], mjds[1:]):
-        #print('Generating file %i' % count)
-        # generate_sky(mjd0=mjd1, mjd_max=mjd2, outpath='opsimFields', fieldID=True)
-        #generate_sky(mjd0=mjd1, mjd_max=mjd2+day_pad, outpath='healpix_6mo')
+    count = 0
+    for mjd1, mjd2 in zip(mjds[:-1], mjds[1:]):
+        print('Generating file %i' % count)
+        #generate_sky(mjd0=mjd1, mjd_max=mjd2, outpath='opsimFields', fieldID=True)
+        generate_sky(mjd0=mjd1, mjd_max=mjd2+day_pad, outpath='healpix_6mo')
+        count += 1
         
