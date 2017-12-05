@@ -1,0 +1,25 @@
+import ipyparallel as ipp
+import numpy as np
+
+if __name__ == "__main__":
+
+    # Connect to parallel clients
+    rc = ipp.Client()
+    dview = rc[:]
+
+    # import the function on all the engines
+    dview.execute("import generate_sky")
+
+    # Make a quick small one for speed loading
+    #generate_sky(mjd0=59579, mjd_max=59579+10., outpath='healpix_6mo', outfile='small_example.npz_small')
+
+    nyears = 20  # 13
+    #day_pad = 30
+    # Full year
+    # mjds = np.arange(59560, 59560+365.25*nyears+day_pad+366, 366)
+    # 6-months
+    mjds = np.arange(59560, 59560+366*nyears+366/2., 366/2.)
+
+    result = dview.map_sync(lambda mjd1, mjd2:
+                            generate_sky.generate_sky(mjd0 = mjd1, mjd_max=mjd2+30, outpath='healpix_6mo', verbose=False),
+                            mjds[:-1], mjds[1:])
