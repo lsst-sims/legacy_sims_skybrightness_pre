@@ -57,16 +57,29 @@ class SkyModelPre(object):
 
         # Go ahead and load the first one by default
         if speedLoad:
-            self._load_data(59580., filename=os.path.join(data_dir, 'healpix/small_example.npz_small'))
+            self._load_data(59580.,
+                            filename=os.path.join(data_dir, 'healpix/small_example.npz_small'),
+                            npyfile=os.path.join(data_dir, 'healpix/small_example.npz_smnpy.npy'))
         else:
             if preload:
                 self._load_data(self.mjd_left[0])
             else:
                 self.loaded_range = np.array([-1])
 
-    def _load_data(self, mjd, filename=None):
+    def _load_data(self, mjd, filename=None, npyfile=None):
         """
-        Load up the .npz file to interpolate things
+        Load up the .npz file to interpolate things. After python 3 upgrade, numpy.savez refused
+        to write large .npz files, so data is split between .npz and .npy files.
+
+        Parameters
+        ----------
+        mjd : float
+            The Modified Julian Date that we want to load
+        filename : str (None)
+            The filename to restore. If None, it checks the filenames on disk to find one that
+            should have the requested MJD
+        npyfile : str (None)
+            If sky brightness data not in npz file, checks the .npy file with same root name.
         """
 
         if filename is None:
@@ -76,7 +89,7 @@ class SkyModelPre(object):
                 raise ValueError('MJD = %f is out of range for the files found (%f-%f)' % (mjd,
                                                                                            self.mjd_left.min(),
                                                                                            self.mjd_right.max()))
-            filename = self.files[file_indx.min()]
+            filename = self.files[file_indx.max()]
             self.loaded_range = np.array([self.mjd_left[file_indx], self.mjd_right[file_indx]])
         else:
             self.loaded_range = None
@@ -86,18 +99,32 @@ class SkyModelPre(object):
         # Add encoding kwarg to restore Python 2.7 generated files
         data = np.load(filename, encoding='bytes')
         self.info = data['dict_of_lists'][()]
-        self.sb = data['sky_brightness'][()]
         self.header = data['header'][()]
-        data.close()
+        if 'sky_brightness' in data.keys():
+            self.sb = data['sky_brightness'][()]
+            data.close()
+        else:
+            # the sky brightness had to go in it's own npy file
+            data.close()
+            if npyfile is None:
+                npyfile = filename[:-3]+'npy'
+            self.sb = np.load(npyfile)
 
         # Step to make sure keys are strings not bytes
         all_dicts = [self.info, self.sb, self.header]
+        all_dicts = [single_dict for single_dict in all_dicts if hasattr(single_dict, 'keys')]
         for selfDict in all_dicts:
             for key in list(selfDict.keys()):
                 if type(key) != str:
                     selfDict[key.decode("utf-8")] = selfDict.pop(key)
 
-        self.filter_names = list(self.sb.keys())
+        # Ugh, different versions of the save files could have dicts or np.array.
+        # Let's hope someone fits some Fourier components to the sky brightnesses and gets rid
+        # of the giant save files for good.
+        if hasattr(self.sb, 'keys'):
+            self.filter_names = list(self.sb.keys())
+        else:
+            self.filter_names = self.sb.dtype.names
 
         if self.verbose:
             print('%s loaded' % os.path.split(filename)[1])
@@ -191,7 +218,7 @@ class SkyModelPre(object):
             baseline = self.info['mjds'][right] - self.info['mjds'][left]
 
         if indx is None:
-            result_size = self.sb[list(self.sb.keys())[0]][left, :].size
+            result_size = self.sb[self.filter_names[0]][left, :].size
             indx = np.arange(result_size)
         else:
             result_size = len(indx)

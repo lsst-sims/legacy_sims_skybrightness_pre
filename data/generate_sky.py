@@ -8,6 +8,9 @@ import sys
 import os
 import ephem
 from lsst.sims.skybrightness.utils import mjd2djd
+import ipyparallel as ipp
+
+# Running in parallel, start engines first with, e.g., ipcluster start -n 4
 
 
 def generate_sky(mjd0=59560.2, mjd_max=59565.2, timestep=5., timestep_max=15.,
@@ -81,7 +84,7 @@ def generate_sky(mjd0=59560.2, mjd_max=59565.2, timestep=5., timestep_max=15.,
     sunAlts = np.zeros(mjds.size, dtype=float)
 
     if outfile is None:
-        outfile = '%f_%f.npz' % (mjds.min(), mjds.max())
+        outfile = '%i_%i.npz' % (mjds.min(), mjds.max())
     if outpath is not None:
         outfile = os.path.join(outpath, outfile)
 
@@ -136,7 +139,6 @@ def generate_sky(mjd0=59560.2, mjd_max=59565.2, timestep=5., timestep_max=15.,
     length = mjds[-1] - mjds[0]
     last_5_mags = []
     last_5_mjds = []
-
     full_masks = []
     for mjd in mjds:
         progress = (mjd-mjd0)/length*100
@@ -214,7 +216,7 @@ def generate_sky(mjd0=59560.2, mjd_max=59565.2, timestep=5., timestep_max=15.,
                                 for filter_name in filter_names:
                                     interp_sky = w1 * sky_brightness[filter_name][-3][overhead]
                                     interp_sky += w2 * sky_brightness[filter_name][-1][overhead]
-                                    diff = np.abs(last_5_mags[indx][filter_name][overhead]-interp_sky)
+                                    diff = np.abs(last_5_mags[int(indx)][filter_name][overhead]-interp_sky)
                                     if np.size(diff[~np.isnan(diff)]) > 0:
                                         if np.max(diff[~np.isnan(diff)]) > dm:
                                             can_interp = False
@@ -242,20 +244,36 @@ def generate_sky(mjd0=59560.2, mjd_max=59565.2, timestep=5., timestep_max=15.,
               'ra': ra, 'dec': dec, 'verbose': verbose, 'required_mjds': required_mjds,
               'version': version, 'fingerprint': fingerprint}
 
-    np.savez(outfile, dict_of_lists = dict_of_lists, sky_brightness=sky_brightness, header=header)
+    np.savez(outfile, dict_of_lists = dict_of_lists, header=header)
+    # Convert sky_brightness to a true array so it's easier to save
+    types = [float]*len(sky_brightness.keys())
+    result = np.zeros(sky_brightness[list(sky_brightness.keys())[0]].shape,
+                      dtype=list(zip(sky_brightness.keys(), types)))
+    for key in sky_brightness.keys():
+        result[key] = sky_brightness[key]
+    np.save(outfile[:-3]+'npy', result)
 
 if __name__ == "__main__":
 
+    # Connect to parallel clients
+    rc = ipp.Client()
+    dview = rc[:]
     # Make a quick small one for speed loading
-    # generate_sky(mjd0=59579, mjd_max=59579+10., outpath='healpix', outfile='small_example.npz_small')
+    #generate_sky(mjd0=59579, mjd_max=59579+10., outpath='healpix_6mo', outfile='small_example.npz_small')
 
-    nyears = 13
-    day_pad = 50.
+    nyears = 20  # 13
+    day_pad = 30
     # Full year
     # mjds = np.arange(59560, 59560+365.25*nyears+day_pad+366, 366)
     # 6-months
-    mjds = np.arange(59560, 59560+365.25*nyears+day_pad+366/2., 366/2.)
-    for mjd1, mjd2 in zip(mjds[:-1], mjds[1:]):
-        generate_sky(mjd0=mjd1, mjd_max=mjd2, outpath='opsimFields', fieldID=True)
-        # generate_sky(mjd0=mjd1, mjd_max=mjd2, outpath='healpix')
+    mjds = np.arange(59560, 59560+366*nyears+366/2., 366/2.)
+
+    result = dview.map_sync(lambda mjd1, mjd2:
+                            generate_sky(mjd0=mjd1, mjd_max=mjd2+day_pad,
+                                         outpath='healpix_6mo', verbose=False),
+                            mjds[:-1], mjds[1:])
+    #for mjd1, mjd2 in zip(mjds[:-1], mjds[1:]):
+        #print('Generating file %i' % count)
+        # generate_sky(mjd0=mjd1, mjd_max=mjd2, outpath='opsimFields', fieldID=True)
+        #generate_sky(mjd0=mjd1, mjd_max=mjd2+day_pad, outpath='healpix_6mo')
         
