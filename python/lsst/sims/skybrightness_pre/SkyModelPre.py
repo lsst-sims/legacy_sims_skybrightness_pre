@@ -147,6 +147,8 @@ class SkyModelPre(object):
             convert_indx = raDec2Hpid(self.nside, self.field_data['ra'], self.field_data['dec'])
             self.sb = self.sb[:, convert_indx]
             self.info['airmass'] = self.info['airmass'][:, convert_indx]
+            self.header['ra'] = self.field_data['ra']
+            self.header['dec'] = self.field_data['dec']
 
     def returnSunMoon(self, mjd):
         """
@@ -293,6 +295,11 @@ class SkyModelPre(object):
             A dictionary with filter names as keys and np.arrays as values which
             hold the sky brightness maps in mag/sq arcsec.
         """
+
+        if indx is not None and self.opsimFields:
+            # Because field IDs start indexing at 1.
+            indx = np.array(indx)-1
+
         if (mjd < self.loaded_range.min() or (mjd > self.loaded_range.max())):
             self._load_data(mjd)
 
