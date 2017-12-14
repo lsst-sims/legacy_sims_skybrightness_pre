@@ -5,7 +5,7 @@ import os
 import healpy as hp
 from lsst.utils import getPackageDir
 import warnings
-from lsst.sims.utils import _angularSeparation
+from lsst.sims.utils import _angularSeparation, raDec2Hpid
 
 __all__ = ['SkyModelPre']
 
@@ -17,6 +17,12 @@ class SkyModelPre(object):
     """
 
     def __init__(self, data_path=None, opsimFields=False, preload=True, speedLoad=False, verbose=False):
+        """
+        Parameters
+        ----------
+        opsimFields: bool (False)
+            Assume incoming indx values are for field ID rather than healpix ID.
+        """
 
         self.info = None
         self.sb = None
@@ -30,10 +36,7 @@ class SkyModelPre(object):
             data_dir = os.path.join(getPackageDir('sims_skybrightness_pre'), 'data')
 
         if data_path is None:
-            if opsimFields:
-                data_path = os.path.join(data_dir, 'opsimFields')
-            else:
-                data_path = os.path.join(data_dir, 'healpix')
+            data_path = os.path.join(data_dir, 'healpix')
 
         self.files = glob.glob(os.path.join(data_path, '*.npz*'))
         if len(self.files) == 0:
@@ -54,6 +57,11 @@ class SkyModelPre(object):
 
         self.mjd_left = np.array(mjd_left)
         self.mjd_right = np.array(mjd_right)
+
+        if self.opsimFields:
+            # These are in degrees
+            self.field_data = np.loadtxt(os.path.join(data_dir, 'fieldID.dat'), delimiter='|', skiprows=1,
+                                         dtype=list(zip(['id', 'ra', 'dec'], [int, float, float])))
 
         # Go ahead and load the first one by default
         if speedLoad:
@@ -129,11 +137,18 @@ class SkyModelPre(object):
         if self.verbose:
             print('%s loaded' % os.path.split(filename)[1])
 
-        if not self.opsimFields:
-            self.nside = hp.npix2nside(self.sb[self.filter_names[0]][0, :].size)
+        self.nside = hp.npix2nside(self.sb[self.filter_names[0]][0, :].size)
 
         if self.loaded_range is None:
             self.loaded_range = np.array([self.info['mjds'].min(), self.info['mjds'].max()])
+
+        # If we want to look things up by opsim field ID, (ugh), we can chop things down
+        if self.opsimFields:
+            convert_indx = raDec2Hpid(self.nside, self.field_data['ra'], self.field_data['dec'])
+            self.sb = self.sb[:, convert_indx]
+            self.info['airmass'] = self.info['airmass'][:, convert_indx]
+            self.header['ra'] = self.field_data['ra']
+            self.header['dec'] = self.field_data['dec']
 
     def returnSunMoon(self, mjd):
         """
@@ -280,6 +295,11 @@ class SkyModelPre(object):
             A dictionary with filter names as keys and np.arrays as values which
             hold the sky brightness maps in mag/sq arcsec.
         """
+
+        if indx is not None and self.opsimFields:
+            # Because field IDs start indexing at 1.
+            indx = np.array(indx)-1
+
         if (mjd < self.loaded_range.min() or (mjd > self.loaded_range.max())):
             self._load_data(mjd)
 
