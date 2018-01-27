@@ -265,7 +265,7 @@ if __name__ == "__main__":
     count = 0
     for mjd1, mjd2 in zip(mjds[:-1], mjds[1:]):
         print('Generating file %i' % count)
-        #generate_sky(mjd0=mjd1, mjd_max=mjd2, outpath='opsimFields', fieldID=True)
-        generate_sky(mjd0=mjd1, mjd_max=mjd2+day_pad, outpath='healpix_6mo')
+        generate_sky(mjd0=mjd1, mjd_max=mjd2, outpath='opsimFields', fieldID=True)
+        #generate_sky(mjd0=mjd1, mjd_max=mjd2+day_pad, outpath='healpix_6mo')
         count += 1
         
