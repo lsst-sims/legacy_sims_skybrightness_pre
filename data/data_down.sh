@@ -39,5 +39,6 @@ if [ ${HEALPIX} -eq 1 ]; then
 fi
 if [ ${OPSIM_FIELDS} -eq 1 ]; then
 	${FETCH_CMD} ${DATA_URL}/opsimFields/*.npz opsimFields/
+  ${FETCH_CMD} ${DATA_URL}/opsimFields/*.npy opsimFields/
 fi
 ${FETCH_CMD} ${DATA_URL}/percentile_m5_maps.npz .
