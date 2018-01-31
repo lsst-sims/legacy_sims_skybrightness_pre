@@ -103,7 +103,7 @@ class SkyModelPre(object):
             self.loaded_range = None
 
         if self.verbose:
-            print('Loading file %s' % os.path.split(filename)[1])
+            print('Loading file %s' % filename)
         # Add encoding kwarg to restore Python 2.7 generated files
         data = np.load(filename, encoding='bytes')
         self.info = data['dict_of_lists'][()]
@@ -117,6 +117,8 @@ class SkyModelPre(object):
             if npyfile is None:
                 npyfile = filename[:-3]+'npy'
             self.sb = np.load(npyfile)
+            if self.verbose:
+                print('also loadding %s' % npyfile)
 
         # Step to make sure keys are strings not bytes
         all_dicts = [self.info, self.sb, self.header]
