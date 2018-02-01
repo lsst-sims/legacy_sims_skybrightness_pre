@@ -7,7 +7,8 @@ import numpy as np
 import lsst.sims.utils as utils
 import ephem
 from lsst.sims.skybrightness.utils import mjd2djd
-from lsst.sims.utils import _angularSeparation
+from lsst.sims.utils import _angularSeparation, raDec2Hpid, angularSeparation
+import lsst.sims.survey.fields as sf
 
 
 class TestSkyPre(unittest.TestCase):
@@ -16,11 +17,39 @@ class TestSkyPre(unittest.TestCase):
     def setUpClass(cls):
         try:
             cls.sm = sbp.SkyModelPre(speedLoad=True)
+            cls.sm_fields = sbp.SkyModelPre(speedLoad=True, opsimFields=True)
             mjd = cls.sm.info['mjds'][1]+4./60./24.
             tmp = cls.sm.returnMags(mjd)
             cls.data_present = True
         except:
             cls.data_present = False
+
+    def testFieldsMatch(self):
+        """Test that the field based maps match the healpix maps
+        """
+        decs = [-60., -40., -20.]
+        mjds = []
+        ra = 280
+
+        # Load up the fields
+        selection = sf.FieldSelection()
+        all_fields = selection.get_all_fields()
+        fdb = sf.FieldsDatabase()
+        field_ras, field_decs = fdb.get_ra_dec_arrays(all_fields)
+
+        for mjd in self.sm.info['mjds'][10:12]:
+            mjds.append(mjd)
+            mjds.append(mjd+.0002)
+        for dec in decs:
+            healID = raDec2Hpid(self.sm.nside, ra, dec)
+            # do the slow brute force lookup since I'm too lazy to import kdtree
+            dist = angularSeparation(field_ras, field_decs, ra, dec)
+            fieldID = np.max(np.where(dist == dist.min()))
+            for mjd in mjds:
+                field_mag = self.sm_fields.returnMags(mjd, indx=[fieldID])
+                heal_mag = self.sm.returnMags(mjd, indx=[healID])
+                for key in field_mag:
+                    np.testing.assert_almost_equal(field_mag[key], heal_mag[key], decimal=3)
 
     def testReturnMags(self):
         """
@@ -28,7 +57,7 @@ class TestSkyPre(unittest.TestCase):
         """
         # Check both the healpix and opsim fields
         if self.data_present:
-            sms = [self.sm, sbp.SkyModelPre(speedLoad=True, opsimFields=True)]
+            sms = [self.sm, self.sm_fields]
             mjds = []
             for mjd in sms[0].info['mjds'][100:102]:
                 mjds.append(mjd)
