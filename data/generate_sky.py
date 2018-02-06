@@ -81,7 +81,7 @@ def generate_sky(mjd0=59560.2, mjd_max=59565.2, timestep=5., timestep_max=15.,
     sunAlts = np.zeros(mjds.size, dtype=float)
 
     if outfile is None:
-        outfile = '%i_%i.npz' % (mjds.min(), mjds.max())
+        outfile = '%i_%i.npz' % (mjd0, mjd_max)
     if outpath is not None:
         outfile = os.path.join(outpath, outfile)
 
@@ -265,7 +265,7 @@ if __name__ == "__main__":
     count = 0
     for mjd1, mjd2 in zip(mjds[:-1], mjds[1:]):
         print('Generating file %i' % count)
-        generate_sky(mjd0=mjd1, mjd_max=mjd2, outpath='opsimFields', fieldID=True)
+        generate_sky(mjd0=mjd1, mjd_max=mjd2+day_pad, outpath='opsimFields', fieldID=True)
         #generate_sky(mjd0=mjd1, mjd_max=mjd2+day_pad, outpath='healpix_6mo')
         count += 1
         
