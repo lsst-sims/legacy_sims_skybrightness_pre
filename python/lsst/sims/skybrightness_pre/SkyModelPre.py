@@ -20,6 +20,9 @@ class SkyModelPre(object):
 
         self.info = None
         self.sb = None
+        self.header = None
+        self.filter_names = None
+
         self.opsimFields = opsimFields
         self.verbose = verbose
 
@@ -81,6 +84,10 @@ class SkyModelPre(object):
         npyfile : str (None)
             If sky brightness data not in npz file, checks the .npy file with same root name.
         """
+        del self.info
+        del self.sb
+        del self.header
+        del self.filter_names
 
         if filename is None:
             # Figure out which file to load.
