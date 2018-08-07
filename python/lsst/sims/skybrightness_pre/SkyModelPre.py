@@ -150,7 +150,8 @@ class SkyModelPre(object):
         -------
         sunMoon : dict
             Dict with keys for the sun and moon RA and Dec and the
-            mooon-sun separation.
+            mooon-sun separation. All values in radians, except for moonSunSep
+            that is in degrees for some reason (that reason is probably because I'm sloppy).
         """
 
         keys = ['sunAlts', 'moonAlts', 'moonRAs', 'moonDecs', 'sunRAs',
