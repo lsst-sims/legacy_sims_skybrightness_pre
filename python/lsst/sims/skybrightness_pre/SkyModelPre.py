@@ -10,6 +10,44 @@ from lsst.sims.utils import _angularSeparation
 __all__ = ['SkyModelPre']
 
 
+def shortAngleDist(a0, a1):
+    """
+    from https://gist.github.com/shaunlebron/8832585
+    """
+    max_angle = 2.*np.pi
+    da = (a1 - a0) % max_angle
+    return 2.*da % max_angle - da
+
+
+def interp_angle(x, xp, anglep, degrees=False):
+    """
+    Interpolate between two angles
+    """
+    # compute the interpolation factor
+    left = np.searchsorted(xp, x)-1
+    right = left+1
+
+    # If we are out of bounds
+    if right >= xp.size:
+        right -= 1
+        baseline = 1.
+    elif left < 0:
+        left += 1
+        baseline = 1.
+    else:
+        baseline = xp[right] - xp[left]
+
+    wterm = (x - xp[left])/baseline
+    if degrees:
+        result = np.radians(anglep[left]) + shortAngleDist(np.radians(anglep[left]), np.radians(anglep[right]))*wterm
+        result = result % (2.*np.pi)
+        result = np.degrees(result)
+    else:
+        result = anglep[left] + shortAngleDist(anglep[left], anglep[right])*wterm
+        result = result % (2.*np.pi)
+    return result
+
+
 class SkyModelPre(object):
     """
     Load pre-computed sky brighntess maps for the LSST site and use them to interpolate to
@@ -139,18 +177,10 @@ class SkyModelPre(object):
 
     def returnSunMoon(self, mjd):
         """
-
-        XXXXXX----DO NOT USE THIS METHOD!!! IT CAN RETURN VERY WRONG VALUES
-        IF YOU PICK A TIME. IT WILL TRY TO INTERPOLATE BETWEEN 359 DEGREES AND 2
-        DEGREES AND GET A VERY WRONG NUMBER.
-
-
-        Return dictionary with the interpolated positions for sun and moon
-
         Parameters
         ----------
         mjd : float
-           Modified Julian Date to interpolate to
+           Modified Julian Date(s) to interpolate to
 
         Returns
         -------
@@ -160,38 +190,24 @@ class SkyModelPre(object):
             that is in degrees for some reason (that reason is probably because I'm sloppy).
         """
 
-        warnings.warn('Method returnSunMoon to be depreciated. Interpolating angles is bad!')
+        #warnings.warn('Method returnSunMoon to be depreciated. Interpolating angles is bad!')
 
         keys = ['sunAlts', 'moonAlts', 'moonRAs', 'moonDecs', 'sunRAs',
                 'sunDecs', 'moonSunSep']
 
+        degrees = [False, False, False, False, False, False, True]
+
         if (mjd < self.loaded_range.min() or (mjd > self.loaded_range.max())):
             self._load_data(mjd)
 
-        left = np.searchsorted(self.info['mjds'], mjd)-1
-        right = left+1
-
-        # If we are out of bounds
-        if right >= self.info['mjds'].size:
-            right -= 1
-            baseline = 1.
-        elif left < 0:
-            left += 1
-            baseline = 1.
-        else:
-            baseline = self.info['mjds'][right] - self.info['mjds'][left]
-
-        wterm = (mjd - self.info['mjds'][left])/baseline
-        w1 = (1. - wterm)
-        w2 = wterm
-
         result = {}
-        for key in keys:
+        for key, period in zip(keys, degrees):
             if key[-1] == 's':
                 newkey = key[:-1]
             else:
                 newkey = key
-            result[newkey] = self.info[key][left] * w1 + self.info[key][right] * w2
+            import pdb ; pdb.set_trace()
+            result[newkey] = interp_angle(mjd, self.info['mjds'], self.info[key], degrees=degrees)
         return result
 
     def returnAirmass(self, mjd, maxAM=10., indx=None, badval=hp.UNSEEN):
