@@ -139,6 +139,12 @@ class SkyModelPre(object):
 
     def returnSunMoon(self, mjd):
         """
+
+        XXXXXX----DO NOT USE THIS METHOD!!! IT CAN RETURN VERY WRONG VALUES
+        IF YOU PICK A TIME. IT WILL TRY TO INTERPOLATE BETWEEN 359 DEGREES AND 2
+        DEGREES AND GET A VERY WRONG NUMBER.
+
+
         Return dictionary with the interpolated positions for sun and moon
 
         Parameters
@@ -153,6 +159,8 @@ class SkyModelPre(object):
             mooon-sun separation. All values in radians, except for moonSunSep
             that is in degrees for some reason (that reason is probably because I'm sloppy).
         """
+
+        warnings.warn('Method returnSunMoon to be depreciated. Interpolating angles is bad!')
 
         keys = ['sunAlts', 'moonAlts', 'moonRAs', 'moonDecs', 'sunRAs',
                 'sunDecs', 'moonSunSep']
