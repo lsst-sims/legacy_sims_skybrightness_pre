@@ -7,7 +7,55 @@ from lsst.utils import getPackageDir
 import warnings
 from lsst.sims.utils import _angularSeparation
 
-__all__ = ['SkyModelPre']
+__all__ = ['SkyModelPre', 'interp_angle']
+
+
+def shortAngleDist(a0, a1):
+    """
+    from https://gist.github.com/shaunlebron/8832585
+    """
+    max_angle = 2.*np.pi
+    da = (a1 - a0) % max_angle
+    return 2.*da % max_angle - da
+
+
+def interp_angle(x_out, xp, anglep, degrees=False):
+    """
+    Interpolate angle values (handle wrap around properly). Does nearest neighbor
+    interpolation if values out of range.
+
+    Parameters
+    ----------
+    x_out : float (or array)
+        The points to interpolate to.
+    xp : array
+        Points to interpolate between (must be sorted)
+    anglep : array
+        The angles ascociated with xp
+    degrees : bool (False)
+        Set if anglep is degrees (True) or radidian (False)
+    """
+
+    # Where are the interpolation points
+    x = np.atleast_1d(x_out)
+    left = np.searchsorted(xp, x)-1
+    right = left+1
+
+    # If we are out of bounds, just use the edges
+    right[np.where(right >= xp.size)] -= 1
+    left[np.where(left < 0)] += 1
+    baseline = xp[right] - xp[left]
+
+    wterm = (x - xp[left])/baseline
+    wterm[np.where(baseline == 0)] = 0
+    if degrees:
+        result = np.radians(anglep[left]) + shortAngleDist(np.radians(anglep[left]), np.radians(anglep[right]))*wterm
+        result = result % (2.*np.pi)
+        result = np.degrees(result)
+    else:
+        result = anglep[left] + shortAngleDist(anglep[left], anglep[right])*wterm
+        result = result % (2.*np.pi)
+    return result
 
 
 class SkyModelPre(object):
@@ -139,18 +187,10 @@ class SkyModelPre(object):
 
     def returnSunMoon(self, mjd):
         """
-
-        XXXXXX----DO NOT USE THIS METHOD!!! IT CAN RETURN VERY WRONG VALUES
-        IF YOU PICK A TIME. IT WILL TRY TO INTERPOLATE BETWEEN 359 DEGREES AND 2
-        DEGREES AND GET A VERY WRONG NUMBER.
-
-
-        Return dictionary with the interpolated positions for sun and moon
-
         Parameters
         ----------
         mjd : float
-           Modified Julian Date to interpolate to
+           Modified Julian Date(s) to interpolate to
 
         Returns
         -------
@@ -160,38 +200,29 @@ class SkyModelPre(object):
             that is in degrees for some reason (that reason is probably because I'm sloppy).
         """
 
-        warnings.warn('Method returnSunMoon to be depreciated. Interpolating angles is bad!')
+        #warnings.warn('Method returnSunMoon to be depreciated. Interpolating angles is bad!')
 
         keys = ['sunAlts', 'moonAlts', 'moonRAs', 'moonDecs', 'sunRAs',
                 'sunDecs', 'moonSunSep']
 
+        degrees = [False, False, False, False, False, False, True]
+
         if (mjd < self.loaded_range.min() or (mjd > self.loaded_range.max())):
             self._load_data(mjd)
 
-        left = np.searchsorted(self.info['mjds'], mjd)-1
-        right = left+1
-
-        # If we are out of bounds
-        if right >= self.info['mjds'].size:
-            right -= 1
-            baseline = 1.
-        elif left < 0:
-            left += 1
-            baseline = 1.
-        else:
-            baseline = self.info['mjds'][right] - self.info['mjds'][left]
-
-        wterm = (mjd - self.info['mjds'][left])/baseline
-        w1 = (1. - wterm)
-        w2 = wterm
-
         result = {}
-        for key in keys:
+        for key, degree in zip(keys, degrees):
             if key[-1] == 's':
                 newkey = key[:-1]
             else:
                 newkey = key
-            result[newkey] = self.info[key][left] * w1 + self.info[key][right] * w2
+            if 'RA' in key:
+                result[newkey] = interp_angle(mjd, self.info['mjds'], self.info[key], degrees=degree)
+                # Return a scalar if only doing 1 date.
+                if np.size(result[newkey]) == 1:
+                    result[newkey] = np.max(result[newkey])
+            else:
+                result[newkey] = np.interp(mjd, self.info['mjds'], self.info[key])
         return result
 
     def returnAirmass(self, mjd, maxAM=10., indx=None, badval=hp.UNSEEN):

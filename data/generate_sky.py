@@ -253,7 +253,8 @@ def generate_sky(mjd0=59560.2, mjd_max=59565.2, timestep=5., timestep_max=15.,
 if __name__ == "__main__":
 
     # Make a quick small one for speed loading
-    generate_sky(mjd0=59579, mjd_max=59579+10., outpath='healpix', outfile='small_example.npz_small')
+    #generate_sky(mjd0=59579, mjd_max=59579+10., outpath='healpix', outfile='small_example.npz_small')
+    #generate_sky(mjd0=59579, mjd_max=59579+10., outpath='opsimFields', fieldID=True)
 
     nyears = 20  # 13
     day_pad = 30
