@@ -131,7 +131,7 @@ class TestSkyPre(unittest.TestCase):
             mjds = np.linspace(mjd1, mjd2, 20)
 
             # Demand Moon and Sun Positions match to within 3 arcmin
-            arcmin_places = np.abs(np.floor(np.log10(3./60./180.*np.pi))).astype(int)
+            arcmin_places = np.abs(np.floor(np.log10(3/60./180.*np.pi))).astype(int)
 
             for mjd in mjds:
                 Observatory.date = mjd2djd(mjd)

@@ -216,7 +216,13 @@ class SkyModelPre(object):
                 newkey = key[:-1]
             else:
                 newkey = key
-            result[newkey] = interp_angle(mjd, self.info['mjds'], self.info[key], degrees=degree)
+            if 'RA' in key:
+                result[newkey] = interp_angle(mjd, self.info['mjds'], self.info[key], degrees=degree)
+                # Return a scalar if only doing 1 date.
+                if np.size(result[newkey]) == 1:
+                    result[newkey] = np.max(result[newkey])
+            else:
+                result[newkey] = np.interp(mjd, self.info['mjds'], self.info[key])
         return result
 
     def returnAirmass(self, mjd, maxAM=10., indx=None, badval=hp.UNSEEN):
