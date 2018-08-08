@@ -7,7 +7,7 @@ from lsst.utils import getPackageDir
 import warnings
 from lsst.sims.utils import _angularSeparation
 
-__all__ = ['SkyModelPre']
+__all__ = ['SkyModelPre', 'interp_angle']
 
 
 def shortAngleDist(a0, a1):
@@ -19,25 +19,35 @@ def shortAngleDist(a0, a1):
     return 2.*da % max_angle - da
 
 
-def interp_angle(x, xp, anglep, degrees=False):
+def interp_angle(x_out, xp, anglep, degrees=False):
     """
-    Interpolate between two angles
+    Interpolate angle values (handle wrap around properly). Does nearest neighbor
+    interpolation if values out of range.
+
+    Parameters
+    ----------
+    x_out : float (or array)
+        The points to interpolate to.
+    xp : array
+        Points to interpolate between (must be sorted)
+    anglep : array
+        The angles ascociated with xp
+    degrees : bool (False)
+        Set if anglep is degrees (True) or radidian (False)
     """
-    # compute the interpolation factor
+
+    # Where are the interpolation points
+    x = np.atleast_1d(x_out)
     left = np.searchsorted(xp, x)-1
     right = left+1
 
-    # If we are out of bounds
-    if right >= xp.size:
-        right -= 1
-        baseline = 1.
-    elif left < 0:
-        left += 1
-        baseline = 1.
-    else:
-        baseline = xp[right] - xp[left]
+    # If we are out of bounds, just use the edges
+    right[np.where(right >= xp.size)] -= 1
+    left[np.where(left < 0)] += 1
+    baseline = xp[right] - xp[left]
 
     wterm = (x - xp[left])/baseline
+    wterm[np.where(baseline == 0)] = 0
     if degrees:
         result = np.radians(anglep[left]) + shortAngleDist(np.radians(anglep[left]), np.radians(anglep[right]))*wterm
         result = result % (2.*np.pi)
@@ -201,13 +211,12 @@ class SkyModelPre(object):
             self._load_data(mjd)
 
         result = {}
-        for key, period in zip(keys, degrees):
+        for key, degree in zip(keys, degrees):
             if key[-1] == 's':
                 newkey = key[:-1]
             else:
                 newkey = key
-            import pdb ; pdb.set_trace()
-            result[newkey] = interp_angle(mjd, self.info['mjds'], self.info[key], degrees=degrees)
+            result[newkey] = interp_angle(mjd, self.info['mjds'], self.info[key], degrees=degree)
         return result
 
     def returnAirmass(self, mjd, maxAM=10., indx=None, badval=hp.UNSEEN):
