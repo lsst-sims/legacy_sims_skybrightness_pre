@@ -9,6 +9,7 @@ import ephem
 from lsst.sims.skybrightness.utils import mjd2djd
 from lsst.sims.utils import _angularSeparation, raDec2Hpid, angularSeparation
 import lsst.sims.survey.fields as sf
+import warnings
 
 
 class TestSkyPre(unittest.TestCase):
@@ -23,33 +24,35 @@ class TestSkyPre(unittest.TestCase):
             cls.data_present = True
         except:
             cls.data_present = False
+            warnings.warn('Data files not found, skipping tests. Check data/ for instructions to pull data.')
 
     def testFieldsMatch(self):
         """Test that the field based maps match the healpix maps
         """
-        decs = [-60., -40., -20.]
-        mjds = []
-        ra = 280
+        if self.data_present:
+            decs = [-60., -40., -20.]
+            mjds = []
+            ra = 280
 
-        # Load up the fields
-        selection = sf.FieldSelection()
-        all_fields = selection.get_all_fields()
-        fdb = sf.FieldsDatabase()
-        field_ras, field_decs = fdb.get_ra_dec_arrays(all_fields)
+            # Load up the fields
+            selection = sf.FieldSelection()
+            all_fields = selection.get_all_fields()
+            fdb = sf.FieldsDatabase()
+            field_ras, field_decs = fdb.get_ra_dec_arrays(all_fields)
 
-        for mjd in self.sm.info['mjds'][10:12]:
-            mjds.append(mjd)
-            mjds.append(mjd+.0002)
-        for dec in decs:
-            healID = raDec2Hpid(self.sm.nside, ra, dec)
-            # do the slow brute force lookup since I'm too lazy to import kdtree
-            dist = angularSeparation(field_ras, field_decs, ra, dec)
-            fieldID = np.max(np.where(dist == dist.min()))
-            for mjd in mjds:
-                field_mag = self.sm_fields.returnMags(mjd, indx=[fieldID])
-                heal_mag = self.sm.returnMags(mjd, indx=[healID])
-                for key in field_mag:
-                    np.testing.assert_almost_equal(field_mag[key], heal_mag[key], decimal=3)
+            for mjd in self.sm.info['mjds'][10:12]:
+                mjds.append(mjd)
+                mjds.append(mjd+.0002)
+            for dec in decs:
+                healID = raDec2Hpid(self.sm.nside, ra, dec)
+                # do the slow brute force lookup since I'm too lazy to import kdtree
+                dist = angularSeparation(field_ras, field_decs, ra, dec)
+                fieldID = np.max(np.where(dist == dist.min()))
+                for mjd in mjds:
+                    field_mag = self.sm_fields.returnMags(mjd, indx=[fieldID])
+                    heal_mag = self.sm.returnMags(mjd, indx=[healID])
+                    for key in field_mag:
+                        np.testing.assert_almost_equal(field_mag[key], heal_mag[key], decimal=3)
 
     def testReturnMags(self):
         """
