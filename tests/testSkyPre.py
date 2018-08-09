@@ -17,7 +17,7 @@ class TestSkyPre(unittest.TestCase):
     def setUpClass(cls):
         try:
             cls.sm = sbp.SkyModelPre(speedLoad=True)
-            cls.sm_fields = sbp.SkyModelPre(speedLoad=True, opsimFields=True)
+            cls.sm_fields = sbp.SkyModelPre(speedLoad=True, opsimFields=False)
             mjd = cls.sm.info['mjds'][1]+4./60./24.
             tmp = cls.sm.returnMags(mjd)
             cls.data_present = True
