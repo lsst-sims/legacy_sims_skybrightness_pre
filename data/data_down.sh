@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-FETCH_CMD="rsync -av --progress"
+FETCH_CMD="rsync -avz --progress"
 DATA_URL="lsst-rsync.ncsa.illinois.edu::sim/sims_skybrightness_pre"
 
 usage() {
