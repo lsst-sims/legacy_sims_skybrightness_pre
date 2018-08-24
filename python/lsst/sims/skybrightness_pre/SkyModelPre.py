@@ -64,7 +64,22 @@ class SkyModelPre(object):
     arbitrary dates.
     """
 
-    def __init__(self, data_path=None, opsimFields=False, preload=True, speedLoad=False, verbose=False):
+    def __init__(self, data_path=None, opsimFields=False,
+                 useSimsData=True, speedLoad=False, verbose=False):
+        """
+        Parameters
+        ----------
+        data_path : str (None)
+            path to the numpy save files. Looks in standard plances if set to None.
+        opsimFields : bool (False)
+            Mostly depreciated, if True, loads sky brightnesses computed at field centers.
+            Otherwise uses healpixels.
+        useSimsData : bool (True)
+            If sims_data is available, use the 30-day save file available there.
+        speedLoad : bool (False)
+            (mostly depreciated). If True, use the small file to load found in the usual spot.
+            Only executes if useSimsData is False.
+        """
 
         self.info = None
         self.sb = None
@@ -88,7 +103,7 @@ class SkyModelPre(object):
             errmssg = 'Failed to find pre-computed .npz files. '
             errmssg += 'Copy data from NCSA with sims_skybrightness_pre/data/data_down.sh \n'
             errmssg += 'or build by running sims_skybrightness_pre/data/generate_sky.py'
-            raise ValueError(errmssg)
+            warnings.warn(errmssg)
         mjd_left = []
         mjd_right = []
         # Expect filenames of the form mjd1_mjd2.npz, e.g., 59632.155_59633.2.npz
@@ -103,16 +118,25 @@ class SkyModelPre(object):
         self.mjd_left = np.array(mjd_left)
         self.mjd_right = np.array(mjd_right)
 
+        # Set that nothing is loaded at this point
+        self.loaded_range = np.array([-1])
+
+        # If we have sims_data available, load the 30 day file
+        if useSimsData:
+            if 'SIMS_DATA_DIR' in os.environ:
+                data_path = os.path.join(os.environ['SIMS_DATA_DIR'], 'SkybrighntessData')
+                self._load_data(59853,
+                                filename=os.path.join(data_path, '59853_59885.npz'),
+                                npyfile=os.path.join(data_path, '59853_59885.npy'))
+            else:
+                errmssg = 'sims_data not setup'
+                raise ValueError(errmssg)
+
         # Go ahead and load the first one by default
-        if speedLoad:
+        if speedLoad & ~useSimsData:
             self._load_data(59580.,
                             filename=os.path.join(data_dir, 'healpix/small_example.npz_small'),
                             npyfile=os.path.join(data_dir, 'healpix/small_example.npz_smnpy.npy'))
-        else:
-            if preload:
-                self._load_data(self.mjd_left[0])
-            else:
-                self.loaded_range = np.array([-1])
 
     def _load_data(self, mjd, filename=None, npyfile=None):
         """
@@ -407,4 +431,3 @@ class SkyModelPre(object):
                         sbs[filtername].ravel()[mi] = np.min(full_sky_sb[filtername][closest])
 
         return sbs
-
