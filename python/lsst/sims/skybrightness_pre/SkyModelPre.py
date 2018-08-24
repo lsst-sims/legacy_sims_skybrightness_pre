@@ -65,7 +65,7 @@ class SkyModelPre(object):
     """
 
     def __init__(self, data_path=None, opsimFields=False,
-                 useSimsData=True, speedLoad=False, verbose=False):
+                 speedLoad=True, verbose=False):
         """
         Parameters
         ----------
@@ -74,11 +74,8 @@ class SkyModelPre(object):
         opsimFields : bool (False)
             Mostly depreciated, if True, loads sky brightnesses computed at field centers.
             Otherwise uses healpixels.
-        useSimsData : bool (True)
-            If sims_data is available, use the 30-day save file available there.
-        speedLoad : bool (False)
-            (mostly depreciated). If True, use the small file to load found in the usual spot.
-            Only executes if useSimsData is False.
+        speedLoad : bool (True)
+            If True, use the small 3-day file to load found in the usual spot.
         """
 
         self.info = None
@@ -121,22 +118,11 @@ class SkyModelPre(object):
         # Set that nothing is loaded at this point
         self.loaded_range = np.array([-1])
 
-        # If we have sims_data available, load the 30 day file
-        if useSimsData:
-            if 'SIMS_DATA_DIR' in os.environ:
-                data_path = os.path.join(os.environ['SIMS_DATA_DIR'], 'SkybrighntessData')
-                self._load_data(59853,
-                                filename=os.path.join(data_path, '59853_59885.npz'),
-                                npyfile=os.path.join(data_path, '59853_59885.npy'))
-            else:
-                errmssg = 'sims_data not setup'
-                raise ValueError(errmssg)
-
-        # Go ahead and load the first one by default
-        if speedLoad & ~useSimsData:
-            self._load_data(59580.,
-                            filename=os.path.join(data_dir, 'healpix/small_example.npz_small'),
-                            npyfile=os.path.join(data_dir, 'healpix/small_example.npz_smnpy.npy'))
+        # Go ahead and load the small one in the repo by default
+        if speedLoad:
+            self._load_data(59853.,
+                            filename=os.path.join(data_dir, 'healpix/59853_59856.npz'),
+                            npyfile=os.path.join(data_dir, 'healpix/59853_59856.npy'))
 
     def _load_data(self, mjd, filename=None, npyfile=None):
         """

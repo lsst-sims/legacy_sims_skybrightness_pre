@@ -17,7 +17,7 @@ class TestSkyPre(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         try:
-            cls.sm = sbp.SkyModelPre(useSimsData=False, speedLoad=True)
+            cls.sm = sbp.SkyModelPre(speedLoad=True)
             # cls.sm_fields = sbp.SkyModelPre(speedLoad=True, opsimFields=False, useSimsData=False)
             mjd = cls.sm.info['mjds'][1]+4./60./24.
             tmp = cls.sm.returnMags(mjd)
@@ -202,7 +202,7 @@ class TestSkyPre(unittest.TestCase):
         Test some various loading things
         """
         # check that the sims_data stuff loads
-        sm = sbp.SkyModelPre(useSimsData=True, speedLoad=False)
+        sm = sbp.SkyModelPre(speedLoad=True)
         mjd = self.sm.info['mjds'][10]+0.1
         mags = sm.returnMags(mjd)
         # check that it'll load up something later properly
