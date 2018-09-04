@@ -18,7 +18,7 @@ class TestSkyPre(unittest.TestCase):
     def setUpClass(cls):
         try:
             cls.sm = sbp.SkyModelPre(speedLoad=True)
-            cls.sm_fields = sbp.SkyModelPre(speedLoad=True, opsimFields=False)
+            # cls.sm_fields = sbp.SkyModelPre(speedLoad=True, opsimFields=False, useSimsData=False)
             mjd = cls.sm.info['mjds'][1]+4./60./24.
             tmp = cls.sm.returnMags(mjd)
             cls.data_present = True
@@ -26,6 +26,7 @@ class TestSkyPre(unittest.TestCase):
             cls.data_present = False
             warnings.warn('Data files not found, skipping tests. Check data/ for instructions to pull data.')
 
+    @unittest.skip("24 Aug 2018--Depriciating using Fields ")
     def testFieldsMatch(self):
         """Test that the field based maps match the healpix maps
         """
@@ -60,7 +61,7 @@ class TestSkyPre(unittest.TestCase):
         """
         # Check both the healpix and opsim fields
         if self.data_present:
-            sms = [self.sm, self.sm_fields]
+            sms = [self.sm]
             mjds = []
             for mjd in sms[0].info['mjds'][100:102]:
                 mjds.append(mjd)
@@ -194,6 +195,18 @@ class TestSkyPre(unittest.TestCase):
                                         (np.isfinite(sky1[filtername])))
                         diff = sky1[filtername][good] - sky2[filtername][good]
                         assert(np.max(np.abs(diff)) <= mag_tol)
+
+    @unittest.skip("Don't want to add sims_data as dependency, and this does a large file load too")
+    def test_various(self):
+        """
+        Test some various loading things
+        """
+        # check that the sims_data stuff loads
+        sm = sbp.SkyModelPre(speedLoad=True)
+        mjd = self.sm.info['mjds'][10]+0.1
+        mags = sm.returnMags(mjd)
+        # check that it'll load up something later properly
+        mags = sm.returnMags(60000)
 
 
 class TestMemory(lsst.utils.tests.MemoryTestCase):
