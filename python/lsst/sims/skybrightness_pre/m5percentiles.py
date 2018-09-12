@@ -30,6 +30,8 @@ class M5percentiles(object):
         self.npix = self.m5_histograms['u'][:, 0].size
         self.nside = hp.npix2nside(self.npix)
         self.nbins = float(self.m5_histograms['u'][0, :].size)
+        # The center of each histogram bin
+        self.percentiles = np.arange(self.nbins)/self.nbins +1./2/self.nbins
 
     def dark_map(self, filtername='r', nside_out=64):
         """Return the darkest every healpixel gets
@@ -37,6 +39,24 @@ class M5percentiles(object):
         result = self.m5_histograms[filtername][:, -1]
         if self.nside != nside_out:
             result = hp.ud_grade(result, nside_out=nside_out)
+        return result
+
+    def percentile2m5map(self, percentile, filtername='r', nside=None):
+        """
+        Given a percentile, return the 5-sigma map for that level
+
+        Parameters
+        ----------
+        percentile : float
+             Value between 0-1.
+        """
+        if nside is None:
+            nside = self.nside
+
+        diff = np.abs(percentile - self.percentiles)
+        closest = np.where(diff == diff.min())[0].min()
+        result = self.m5_histograms[filtername][:, closest]
+        result = hp.ud_grade(result, nside)
         return result
 
     def m5map2percentile(self, m5map, filtername='r'):
