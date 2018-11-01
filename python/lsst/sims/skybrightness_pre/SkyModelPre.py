@@ -149,12 +149,12 @@ class SkyModelPre(object):
 
         if filename is None:
             # Figure out which file to load.
-            file_indx = np.where((mjd >= self.mjd_left) & (mjd <= self.mjd_right))[0]
+            file_indx = np.max(np.where((mjd >= self.mjd_left) & (mjd <= self.mjd_right))[0])
             if np.size(file_indx) == 0:
                 raise ValueError('MJD = %f is out of range for the files found (%f-%f)' % (mjd,
                                                                                            self.mjd_left.min(),
                                                                                            self.mjd_right.max()))
-            filename = self.files[file_indx.max()]
+            filename = self.files[file_indx]
             self.loaded_range = np.array([self.mjd_left[file_indx], self.mjd_right[file_indx]])
         else:
             self.loaded_range = None
