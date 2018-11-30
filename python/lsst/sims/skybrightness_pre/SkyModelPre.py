@@ -124,8 +124,8 @@ class SkyModelPre(object):
         # Go ahead and load the small one in the repo by default
         if speedLoad:
             self._load_data(59853.,
-                            filename=os.path.join(data_dir, 'healpix/59853_59856.npz'),
-                            npyfile=os.path.join(data_dir, 'healpix/59853_59856.npy'))
+                            filename=os.path.join(data_dir, 'healpix/59853_59885.npz'),
+                            npyfile=os.path.join(data_dir, 'healpix/59853_59885.npy'))
 
     def _load_data(self, mjd, filename=None, npyfile=None):
         """
