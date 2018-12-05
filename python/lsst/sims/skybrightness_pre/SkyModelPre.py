@@ -124,8 +124,8 @@ class SkyModelPre(object):
         # Go ahead and load the small one in the repo by default
         if speedLoad:
             self._load_data(59853.,
-                            filename=os.path.join(data_dir, 'healpix/59853_59885.npz'),
-                            npyfile=os.path.join(data_dir, 'healpix/59853_59885.npy'))
+                            filename=os.path.join(data_dir, 'healpix/59853_59856.npz'),
+                            npyfile=os.path.join(data_dir, 'healpix/59853_59856.npy'))
 
     def _load_data(self, mjd, filename=None, npyfile=None):
         """
@@ -149,7 +149,7 @@ class SkyModelPre(object):
 
         if filename is None:
             # Figure out which file to load.
-            file_indx = np.max(np.where((mjd >= self.mjd_left) & (mjd <= self.mjd_right))[0])
+            file_indx = np.min(np.where((mjd >= self.mjd_left) & (mjd <= self.mjd_right))[0])
             if np.size(file_indx) == 0:
                 raise ValueError('MJD = %f is out of range for the files found (%f-%f)' % (mjd,
                                                                                            self.mjd_left.min(),
