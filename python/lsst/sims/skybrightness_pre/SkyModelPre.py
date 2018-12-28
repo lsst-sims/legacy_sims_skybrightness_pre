@@ -97,8 +97,8 @@ class SkyModelPre(object):
                 data_path = os.path.join(data_dir, 'opsimFields')
             else:
                 data_path = os.path.join(data_dir, 'healpix')
-
-        self.files = glob.glob(os.path.join(data_path, '*.npz*'))
+        # Expect filenames of the form mjd1_mjd2.npz, e.g., 59632.155_59633.2.npz
+        self.files = glob.glob(os.path.join(data_path, '*.npz'))
         if len(self.files) == 0:
             errmssg = 'Failed to find pre-computed .npz files. '
             errmssg += 'Copy data from NCSA with sims_skybrightness_pre/data/data_down.sh \n'
@@ -106,11 +106,9 @@ class SkyModelPre(object):
             warnings.warn(errmssg)
         mjd_left = []
         mjd_right = []
-        # Expect filenames of the form mjd1_mjd2.npz, e.g., 59632.155_59633.2.npz
-        big_files = glob.glob(os.path.join(data_path, '*.npz'))
-        if len(big_files) != 0:
-            self.files = big_files
-        for filename in big_files:
+        # glob does not always order things I guess?
+        self.files.sort()
+        for filename in self.files:
             temp = os.path.split(filename)[-1].replace('.npz', '').split('_')
             mjd_left.append(float(temp[0]))
             mjd_right.append(float(temp[1]))
@@ -149,12 +147,12 @@ class SkyModelPre(object):
 
         if filename is None:
             # Figure out which file to load.
-            file_indx = np.min(np.where((mjd >= self.mjd_left) & (mjd <= self.mjd_right))[0])
+            file_indx = np.where((mjd >= self.mjd_left) & (mjd <= self.mjd_right))[0]
             if np.size(file_indx) == 0:
                 raise ValueError('MJD = %f is out of range for the files found (%f-%f)' % (mjd,
                                                                                            self.mjd_left.min(),
                                                                                            self.mjd_right.max()))
-            filename = self.files[file_indx]
+            filename = self.files[np.min(file_indx)]
             self.loaded_range = np.array([self.mjd_left[file_indx], self.mjd_right[file_indx]])
         else:
             self.loaded_range = None
