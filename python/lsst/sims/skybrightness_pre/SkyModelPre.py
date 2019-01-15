@@ -156,8 +156,12 @@ class SkyModelPre(object):
             if np.size(file_indx) > 1:
                 # Select the smaller file
                 sizes = self.filesizes[file_indx]
-                file_indx = file_indx[np.min(np.where(sizes == np.min(sizes)))]
+                file_indx = np.min(file_indx[np.where(sizes == np.min(sizes))])
+            else:
+                file_indx = np.min(file_indx)
+
             filename = self.files[file_indx]
+
             self.loaded_range = np.array([self.mjd_left[file_indx], self.mjd_right[file_indx]])
         else:
             self.loaded_range = None
