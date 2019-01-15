@@ -104,6 +104,7 @@ class SkyModelPre(object):
             errmssg += 'Copy data from NCSA with sims_skybrightness_pre/data/data_down.sh \n'
             errmssg += 'or build by running sims_skybrightness_pre/data/generate_sky.py'
             warnings.warn(errmssg)
+        self.filesizes = np.array([os.path.getsize(filename) for filename in self.files])
         mjd_left = []
         mjd_right = []
         # glob does not always order things I guess?
@@ -152,7 +153,11 @@ class SkyModelPre(object):
                 raise ValueError('MJD = %f is out of range for the files found (%f-%f)' % (mjd,
                                                                                            self.mjd_left.min(),
                                                                                            self.mjd_right.max()))
-            filename = self.files[np.min(file_indx)]
+            if np.size(file_indx) > 1:
+                # Select the smaller file
+                sizes = self.filesizes[file_indx]
+                file_indx = file_indx[np.min(np.where(sizes == np.min(sizes)))]
+            filename = self.files[file_indx]
             self.loaded_range = np.array([self.mjd_left[file_indx], self.mjd_right[file_indx]])
         else:
             self.loaded_range = None
