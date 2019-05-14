@@ -169,7 +169,7 @@ class SkyModelPre(object):
         if self.verbose:
             print('Loading file %s' % filename)
         # Add encoding kwarg to restore Python 2.7 generated files
-        data = np.load(filename, encoding='bytes')
+        data = np.load(filename, encoding='bytes', allow_pickle=True)
         self.info = data['dict_of_lists'][()]
         self.header = data['header'][()]
         if 'sky_brightness' in data.keys():
