@@ -423,8 +423,8 @@ class SkyModelPre(object):
                                        np.isnan(sbs[filters[0]].ravel()))[0]
                 for i, mi in enumerate(masked_indx):
                     # Note, this is going to be really slow for many pixels, should use a kdtree
-                    dist = _angularSeparation(np.radians(self.header['ra'][indx][i]),
-                                              np.radians(self.header['dec'][indx][i]),
+                    dist = _angularSeparation(np.radians(self.header['ra'][indx[i]]),
+                                              np.radians(self.header['dec'][indx[i]]),
                                               ra_full, dec_full)
                     closest = np.where(dist == dist.min())[0]
                     for filtername in filters:
