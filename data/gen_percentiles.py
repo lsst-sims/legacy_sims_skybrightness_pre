@@ -4,6 +4,45 @@ from lsst.sims.utils import m5_flat_sed
 from lsst.sims.photUtils import LSSTdefaults
 
 
+def restore_files():
+    roots = ['61390_61603', '61573_61786', '61756_61969']
+    dicts = []
+    sbs = []
+    for root in roots:
+        restore_file = 'healpix/'+root+'.npz'
+        disk_data = np.load(restore_file)
+        required_mjds = disk_data['header'][()]['required_mjds'].copy()
+        dict_of_lists = disk_data['dict_of_lists'][()].copy()
+        disk_data.close()
+        sky_brightness = np.load('healpix/'+root+'.npy')
+        # find the indices of all the evenly spaced mjd values
+        even_mjd_indx = np.in1d(dict_of_lists['mjds'], required_mjds)
+        for key in dict_of_lists:
+            dict_of_lists[key] = dict_of_lists[key][even_mjd_indx]
+        sky_brightness = sky_brightness[even_mjd_indx]
+
+        dicts.append(dict_of_lists)
+        sbs.append(sky_brightness)
+
+    sky_brightness = sbs[0]
+    dict_of_lists = dicts[0]
+
+    try:
+        for i in range(1, len(dicts)):
+            new_mjds = np.where(dicts[i]['mjds'] > dict_of_lists['mjds'].max())[0]
+            for key in dict_of_lists:
+                if isinstance(dicts[i][key][new_mjds], list):
+                    dict_of_lists[key].extend(dicts[i][key][new_mjds])
+                else:
+                    dict_of_lists[key] = np.concatenate((dict_of_lists[key], dicts[i][key][new_mjds]))
+            sky_brightness = np.concatenate((sky_brightness, sbs[i][new_mjds]))
+    except:
+        import pdb ; pdb.set_trace()
+
+    return sky_brightness, dict_of_lists
+
+
+
 def generate_percentiles(nbins=20):
     """
     Make histograms of the 5-sigma limiting depths for each point and each filter.
@@ -11,26 +50,14 @@ def generate_percentiles(nbins=20):
 
     filters = ['u', 'g', 'r', 'i', 'z', 'y']
 
-    restore_file = 'healpix/59560.000000_59926.000000.npz'
-    disk_data = np.load(restore_file)
-    required_mjds = disk_data['header'][()]['required_mjds'].copy()
-    dict_of_lists = disk_data['dict_of_lists'][()].copy()
-    sky_brightness = disk_data['sky_brightness'][()].copy()
-    disk_data.close()
+    sky_brightness, dict_of_lists = restore_files()
 
     npix = sky_brightness['r'].shape[-1]
 
     histograms = np.zeros((nbins, npix), dtype=list(zip(filters, [float]*6)))
     histogram_npts = np.zeros(npix, dtype=list(zip(filters, [int]*6)))
 
-    # find the indices of all the evenly spaced mjd values
-    even_mjd_indx = np.in1d(dict_of_lists['mjds'], required_mjds)
-
-    for key in dict_of_lists:
-        dict_of_lists[key] = dict_of_lists[key][even_mjd_indx]
-    for key in sky_brightness:
-        sky_brightness[key] = sky_brightness[key][even_mjd_indx, :]
-
+    
     for filtername in filters:
         # convert surface brightness to m5
         FWHMeff = LSSTdefaults().FWHMeff(filtername)
@@ -56,5 +83,10 @@ def generate_percentiles(nbins=20):
 
 
 if __name__ == '__main__':
+
+    # make a giant 2-year file
+    #mjd0 = 59853
+    #test_length = 365.25  # days
+    #generate_sky(mjd0=mjd0, mjd_max=mjd0+test_length, outpath='', outfile='big_temp_sky.npz')
 
     generate_percentiles()
