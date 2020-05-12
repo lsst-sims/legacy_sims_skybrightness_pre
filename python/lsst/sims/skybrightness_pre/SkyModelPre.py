@@ -153,12 +153,8 @@ class SkyModelPre(object):
                 raise ValueError('MJD = %f is out of range for the files found (%f-%f)' % (mjd,
                                                                                            self.mjd_left.min(),
                                                                                            self.mjd_right.max()))
-            if np.size(file_indx) > 1:
-                # Select the smaller file
-                sizes = self.filesizes[file_indx]
-                file_indx = np.min(file_indx[np.where(sizes == np.min(sizes))])
-            else:
-                file_indx = np.min(file_indx)
+            # Just take the later one, assuming we're probably simulating forward in time
+            file_indx = np.max(file_indx)
 
             filename = self.files[file_indx]
 
