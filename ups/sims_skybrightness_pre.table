@@ -1,5 +1,3 @@
-setupRequired(numpy)
-setupRequired(healpy)
 setupRequired(sims_utils)
 setupRequired(sims_survey_fields)
 setupOptional(ephem)
