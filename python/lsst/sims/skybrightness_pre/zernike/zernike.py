@@ -23,14 +23,17 @@ from scipy.interpolate import interp1d
 import palpy
 import healpy
 
+from lsst.utils import getPackageDir
+import lsst.sims.utils as utils
+
 # constants
 
 logging.basicConfig(format="%(asctime)s %(message)s")
 LOGGER = logging.getLogger(__name__)
 
-LATITUDE_RAD = np.radians(-30.24074167)
-LONGITUDE_RAD = np.radians(-70.73668333)
+TELESCOPE = utils.Site('LSST')
 SIDEREAL_TIME_SAMPLES_RAD = np.radians(np.arange(361, dtype=float))
+BANDS = ("u", "g", "r", "i", "z", "y")
 
 
 # exception classes
@@ -305,12 +308,12 @@ class ZernikeSky:
         # Do not fit too close to the moon
         alt_rad, az_rad = np.radians(alt), np.radians(az)
         gmst_rad = palpy.gmst(mjd)
-        lst_rad = gmst_rad + LONGITUDE_RAD
+        lst_rad = gmst_rad + TELESCOPE.longitude_rad
         moon_ra_rad, moon_decl_rad, moon_diam = palpy.rdplan(
-            mjd, 3, LONGITUDE_RAD, LATITUDE_RAD
+            mjd, 3, TELESCOPE.longitude_rad, TELESCOPE.latitude_rad
         )
         moon_ha_rad = lst_rad - moon_ra_rad
-        moon_az_rad, moon_el_rad = palpy.de2h(moon_ha_rad, moon_decl_rad, LATITUDE_RAD)
+        moon_az_rad, moon_el_rad = palpy.de2h(moon_ha_rad, moon_decl_rad, TELESCOPE.latitude_rad)
         moon_sep_rad = palpy.dsepVector(
             np.full_like(az_rad, moon_az_rad),
             np.full_like(alt_rad, moon_el_rad),
@@ -372,9 +375,9 @@ class ZernikeSky:
         num_st = len(SIDEREAL_TIME_SAMPLES_RAD)
         healpix_z = np.full([num_st, sphere_npix, self._number_of_terms], np.nan)
         for st_idx, gmst_rad in enumerate(SIDEREAL_TIME_SAMPLES_RAD):
-            lst_rad = gmst_rad + LONGITUDE_RAD
+            lst_rad = gmst_rad + TELESCOPE.longitude_rad
             ha_rad = lst_rad - np.radians(ra)
-            az_rad, alt_rad = palpy.de2hVector(ha_rad, np.radians(decl), LATITUDE_RAD)
+            az_rad, alt_rad = palpy.de2hVector(ha_rad, np.radians(decl), TELESCOPE.latitude_rad)
             sphere_az, sphere_alt = np.degrees(az_rad), np.degrees(alt_rad)
 
             # We only need the half sphere above the horizen
@@ -586,7 +589,6 @@ class SkyBrightnessPreData:
         self.fname_base = fname_base
         self.max_num_mjds = max_num_mjds
         self.times = None
-        self.coords = None
         self.sky = None
         self.metadata = {}
         self.load(fname_base, bands)
@@ -623,23 +625,25 @@ class SkyBrightnessPreData:
             }
         )
 
+        read_mjds = len(self.times)
         if self.max_num_mjds is not None:
-            read_mjds = len(self.times)
             read_mjd_idxs = pd.Series(np.arange(read_mjds))
             mjd_idxs = read_mjd_idxs.sample(self.max_num_mjds)
+        else:
+            mjd_idxs = np.arange(read_mjds)
 
         skies = []
         for mjd_idx in mjd_idxs:
             mjd = npz_data["mjds"][mjd_idx]
             gmst_rad = palpy.gmst(mjd)
-            lst_rad = gmst_rad + LONGITUDE_RAD
-            ha_rad, decl_rad = palpy.dh2eVector(az_rad, alt_rad, LATITUDE_RAD)
+            lst_rad = gmst_rad + TELESCOPE.longitude_rad
+            ha_rad, decl_rad = palpy.dh2eVector(az_rad, alt_rad, TELESCOPE.latitude_rad)
             ra_rad = (lst_rad - ha_rad) % (2 * np.pi)
             moon_ra_rad = npz_data["moonRAs"][mjd_idx]
             moon_decl_rad = npz_data["moonDecs"][mjd_idx]
             moon_ha_rad = lst_rad - moon_ra_rad
             moon_az_rad, moon_el_rad = palpy.de2h(
-                moon_ha_rad, moon_decl_rad, LATITUDE_RAD
+                moon_ha_rad, moon_decl_rad, TELESCOPE.latitude_rad
             )
             moon_sep = palpy.dsepVector(
                 np.full_like(az_rad, moon_az_rad),
@@ -682,12 +686,151 @@ class SkyBrightnessPreData:
         return self.metadata[name]
 
 
+class SkyModelZernike:
+    """Interface to zernike sky that is more similar to SkyModelPre
+
+    Parameters
+    ----------
+    data_file : str (None)
+        File name from which to load Zernike coefficients
+  
+    """
+
+    def __init__(self, data_file=None, **kwargs):
+        if data_file is None:
+            if "SIMS_SKYBRIGHTNESS_DATA" in os.environ:
+                data_dir = os.environ["SIMS_SKYBRIGHTNESS_DATA"]
+            else:
+                data_dir = os.path.join(getPackageDir("sims_skybrightness_pre"), "data")
+
+            data_file = os.path.join(data_dir, "zernike.h5")
+
+        self.zernike_model = {}
+        for band in BANDS:
+            sky = ZernikeSky()
+            sky.load_coeffs(data_file, band)
+            self.zernike_model[band] = sky
+
+    def returnMags(
+        self,
+        mjd,
+        indx=None,
+        airmass_mask=True,
+        planet_mask=True,
+        moon_mask=True,
+        zenith_mask=True,
+        badval=healpy.UNSEEN,
+        filters=["u", "g", "r", "i", "z", "y"],
+        extrapolate=False,
+    ):
+        """
+        Return a full sky map or individual pixels for the input mjd
+
+        Parameters
+        ----------
+        mjd : float
+            Modified Julian Date to interpolate to
+        indx : List of int(s) (None)
+            indices to interpolate the sky values at. Returns full sky if None. If the class was
+            instatiated with opsimFields, indx is the field ID, otherwise it is the healpix ID.
+        airmass_mask : bool (True)
+            Set high (>2.5) airmass pixels to badval.
+        planet_mask : bool (True)
+            Set sky maps to badval near (2 degrees) bright planets.
+        moon_mask : bool (True)
+            Set sky maps near (10 degrees) the moon to badval.
+        zenith_mask : bool (True)
+            Set sky maps at high altitude (>86.5) to badval.
+        badval : float (-1.6375e30)
+            Mask value. Defaults to the healpy mask value.
+        filters : list
+            List of strings for the filters that should be returned.
+        extrapolate : bool (False)
+            In indx is set, extrapolate any masked pixels to be the same as the nearest non-masked
+            value from the full sky map.
+
+        Returns
+        -------
+        sbs : dict
+            A dictionary with filter names as keys and np.arrays as values which
+            hold the sky brightness maps in mag/sq arcsec.
+        """
+        if extrapolate:
+            raise NotImplementedError
+
+        if moon_mask:
+            raise NotImplementedError
+
+        if airmass_mask:
+            raise NotImplementedError
+
+        if planet_mask:
+            raise NotImplementedError
+
+        if zenith_mask:
+            raise NotImplementedError
+        
+        raise NotImplementedError
+
+
+def cut_pre_dataset(
+    fname_base="59823_60191",
+    num_mjd=3,
+    pre_dir="/data/des91.b/data/neilsen/LSST/horizon_skybrightness_pre",
+    cut_dir=".",
+):
+    """Cut a per-computed dataset to specified number of MJDs
+
+    The purpose of this command is to create small input datafiles
+    that can be used for testing
+
+    Parameters
+    ----------
+    fname_base : `str`
+        The base from which to construct file names
+    num_mjd : `int`
+        The number of MJDs to include in the cut file.
+    pre_dir : `str`
+        The directory from which to read data files
+    cut_dur : `str`
+        The directory into which to write cut data files
+    """
+    npy_fname = os.path.join(pre_dir, fname_base + ".npy")
+    npz_fname = os.path.join(pre_dir, fname_base + ".npz")
+
+    npz = np.load(npz_fname, allow_pickle=True)
+    npz_hdr = npz["header"][()]
+    npz_data = npz["dict_of_lists"][()]
+    pre_sky = np.load(npy_fname, allow_pickle=True)
+
+    kept_mjds = np.sort(npz_hdr["required_mjds"])[:num_mjd].copy()
+    kept_mjd_idxs = np.where(np.in1d(npz_data["mjds"], kept_mjds))
+
+    npz_hdr["required_mjds"] = kept_mjds
+    del npz_hdr["version"]
+    del npz_hdr["fingerprint"]
+
+    for data_key in npz_data.keys():
+        npz_data[data_key] = npz_data[data_key][kept_mjd_idxs].copy()
+
+    pre_sky = pre_sky[kept_mjd_idxs].copy()
+
+    min_mjd = int(np.floor(kept_mjds.min()))
+    max_mjd = int(np.floor(kept_mjds.max()))
+    out_fname_base = f'{min_mjd}_{max_mjd}'
+
+    cut_npz_fname = os.path.join(cut_dir, out_fname_base + ".npz")
+    np.savez(cut_npz_fname, header=npz_hdr, dict_of_lists=npz_data)
+
+    cut_npy_fname = os.path.join(cut_dir, out_fname_base + ".npy")
+    np.save(cut_npy_fname, pre_sky)
+
 # internal functions & classes
 
 
 @lru_cache()
 def _calc_moon_az_rad(mjd):
-    ra_rad, decl_rad, diam = palpy.rdplan(mjd, 3, LONGITUDE_RAD, LATITUDE_RAD)
-    ha_rad = palpy.gmst(mjd) + LONGITUDE_RAD - ra_rad
-    az_rad, el_rad = palpy.de2h(ha_rad, decl_rad, LATITUDE_RAD)
+    ra_rad, decl_rad, diam = palpy.rdplan(mjd, 3, TELESCOPE.longitude_rad, TELESCOPE.latitude_rad)
+    ha_rad = palpy.gmst(mjd) + TELESCOPE.longitude_rad - ra_rad
+    az_rad, el_rad = palpy.de2h(ha_rad, decl_rad, TELESCOPE.latitude_rad)
     return az_rad
