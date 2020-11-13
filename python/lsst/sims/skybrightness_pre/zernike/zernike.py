@@ -12,6 +12,7 @@ eyes. J Refract Surg 18, S652-660 (2002).
 from math import factorial
 import logging
 import os
+import warnings
 from glob import glob
 from functools import lru_cache
 import numpy as np
@@ -31,7 +32,7 @@ import lsst.sims.utils as utils
 logging.basicConfig(format="%(asctime)s %(message)s")
 LOGGER = logging.getLogger(__name__)
 
-TELESCOPE = utils.Site('LSST')
+TELESCOPE = utils.Site("LSST")
 SIDEREAL_TIME_SAMPLES_RAD = np.radians(np.arange(361, dtype=float))
 BANDS = ("u", "g", "r", "i", "z", "y")
 
@@ -188,7 +189,7 @@ class ZernikeSky:
         # Should switch to using functools.cached_property in python 3.8
         self.healpix_z = self._compute_healpix_z()
         self._interpolate_healpix_z = interp1d(
-            SIDEREAL_TIME_SAMPLES_RAD, self.healpix_z, axis=0
+            SIDEREAL_TIME_SAMPLES_RAD, self.healpix_z, axis=0, kind="nearest"
         )
 
         # A pd.DataFrame of zernike coeffs, indexed by mjd, providing the
@@ -214,6 +215,9 @@ class ZernikeSky:
         assert self.max_zd == zernike_metadata["max_zd"]
         all_zernike_coeffs = pd.read_hdf(fname, "zernike_coeffs")
         self._coeffs = all_zernike_coeffs.loc[band]
+        self._coeff_calc_func = interp1d(
+            self._coeffs.index.values, self._coeffs.values, axis=0
+        )
 
     def compute_sky(self, alt, az, mjd=None):
         """Estimate sky values
@@ -261,7 +265,11 @@ class ZernikeSky:
         interpolate_healpix_z = self._interpolate_healpix_z
         gmst = palpy.gmst(mjd)
         mjd_healpix_z = interpolate_healpix_z(gmst)
-        result = np.sum(self.coeffs(mjd) * mjd_healpix_z[hpix], axis=1)
+        # mjd_healpix_z = self.healpix_z[int(np.degrees(gmst))]
+        if hpix is None:
+            result = np.sum(self.coeffs(mjd) * mjd_healpix_z, axis=1)
+        else:
+            result = np.sum(self.coeffs(mjd) * mjd_healpix_z[hpix], axis=1)
         return result
 
     def coeffs(self, mjd):
@@ -280,9 +288,7 @@ class ZernikeSky:
         if len(self._coeffs) == 1:
             these_coeffs = self._coeffs.loc[mjd]
         else:
-            calc_these_coeffs = interp1d(
-                self._coeffs.index.values, self._coeffs.values, axis=0
-            )
+            calc_these_coeffs = self._coeff_calc_func
             these_coeffs = calc_these_coeffs(mjd)
         return these_coeffs
 
@@ -313,7 +319,9 @@ class ZernikeSky:
             mjd, 3, TELESCOPE.longitude_rad, TELESCOPE.latitude_rad
         )
         moon_ha_rad = lst_rad - moon_ra_rad
-        moon_az_rad, moon_el_rad = palpy.de2h(moon_ha_rad, moon_decl_rad, TELESCOPE.latitude_rad)
+        moon_az_rad, moon_el_rad = palpy.de2h(
+            moon_ha_rad, moon_decl_rad, TELESCOPE.latitude_rad
+        )
         moon_sep_rad = palpy.dsepVector(
             np.full_like(az_rad, moon_az_rad),
             np.full_like(alt_rad, moon_el_rad),
@@ -350,7 +358,9 @@ class ZernikeSky:
         if maxdiff:
 
             def max_abs_diff(test_coeffs):
-                max_resid = np.max(np.abs(np.sum(test_coeffs * z, axis=1) - sky))
+                max_resid = np.max(
+                    np.abs(np.sum(test_coeffs * z, axis=1) - sky)
+                )
                 return max_resid
 
             min_fit = scipy.optimize.minimize(max_abs_diff, fit_coeffs)
@@ -373,11 +383,15 @@ class ZernikeSky:
         ra, decl = healpy.pix2ang(self.nside, sphere_ipix, lonlat=True)
 
         num_st = len(SIDEREAL_TIME_SAMPLES_RAD)
-        healpix_z = np.full([num_st, sphere_npix, self._number_of_terms], np.nan)
+        healpix_z = np.full(
+            [num_st, sphere_npix, self._number_of_terms], np.nan
+        )
         for st_idx, gmst_rad in enumerate(SIDEREAL_TIME_SAMPLES_RAD):
             lst_rad = gmst_rad + TELESCOPE.longitude_rad
             ha_rad = lst_rad - np.radians(ra)
-            az_rad, alt_rad = palpy.de2hVector(ha_rad, np.radians(decl), TELESCOPE.latitude_rad)
+            az_rad, alt_rad = palpy.de2hVector(
+                ha_rad, np.radians(decl), TELESCOPE.latitude_rad
+            )
             sphere_az, sphere_alt = np.degrees(az_rad), np.degrees(alt_rad)
 
             # We only need the half sphere above the horizen
@@ -396,7 +410,9 @@ class ZernikeSky:
         # following the conventions of eqn 4.
         sphere_npix = healpy.nside2npix(self.nside)
         sphere_ipix = np.arange(sphere_npix)
-        sphere_az, sphere_alt = healpy.pix2ang(self.nside, sphere_ipix, lonlat=True)
+        sphere_az, sphere_alt = healpy.pix2ang(
+            self.nside, sphere_ipix, lonlat=True
+        )
 
         # We only need the half sphere above the horizen
         ipix = sphere_ipix[sphere_alt > 0]
@@ -472,7 +488,9 @@ class ZernikeSky:
         for k in range(num_terms):
             # From eqn 2 of Thibos et al. (2002)
             coeff = (((-1) ** k) * factorial(n - k)) / (
-                factorial(k) * factorial((n + m) / 2 - k) * factorial((n - m) / 2 - k)
+                factorial(k)
+                * factorial((n + m) / 2 - k)
+                * factorial((n - m) / 2 - k)
             )
             assert coeff == int(coeff)
             coeff = int(coeff)
@@ -553,7 +571,15 @@ class ZernikeSky:
         return z_function
 
     def _calc_rho(self, alt):
-        rho = (90.0 - alt) / self.max_zd
+        zd = 90.0 - alt
+        if np.isscalar(alt) and zd > self.max_zd:
+            return np.nan
+
+        rho = zd / self.max_zd
+
+        if not np.isscalar(alt):
+            rho[zd > self.max_zd] = np.nan
+
         return rho
 
     def _calc_phi(self, az):
@@ -577,7 +603,9 @@ class SkyBrightnessPreData:
         data files, sample this many out of the total.
     """
 
-    def __init__(self, fname_base, bands, pre_data_dir=None, max_num_mjds=None):
+    def __init__(
+        self, fname_base, bands, pre_data_dir=None, max_num_mjds=None
+    ):
         if pre_data_dir is None:
             try:
                 self.pre_data_dir = os.environ["SIMS_SKYBRIGHTNESS_DATA"]
@@ -637,7 +665,9 @@ class SkyBrightnessPreData:
             mjd = npz_data["mjds"][mjd_idx]
             gmst_rad = palpy.gmst(mjd)
             lst_rad = gmst_rad + TELESCOPE.longitude_rad
-            ha_rad, decl_rad = palpy.dh2eVector(az_rad, alt_rad, TELESCOPE.latitude_rad)
+            ha_rad, decl_rad = palpy.dh2eVector(
+                az_rad, alt_rad, TELESCOPE.latitude_rad
+            )
             ra_rad = (lst_rad - ha_rad) % (2 * np.pi)
             moon_ra_rad = npz_data["moonRAs"][mjd_idx]
             moon_decl_rad = npz_data["moonDecs"][mjd_idx]
@@ -663,20 +693,32 @@ class SkyBrightnessPreData:
                             "az": az,
                             "ra": np.degrees(ra_rad),
                             "decl": np.degrees(decl_rad),
-                            "moon_ra": np.degrees(npz_data["moonRAs"][mjd_idx]),
-                            "moon_decl": np.degrees(npz_data["moonDecs"][mjd_idx]),
-                            "moon_alt": np.degrees(npz_data["moonAlts"][mjd_idx]),
+                            "moon_ra": np.degrees(
+                                npz_data["moonRAs"][mjd_idx]
+                            ),
+                            "moon_decl": np.degrees(
+                                npz_data["moonDecs"][mjd_idx]
+                            ),
+                            "moon_alt": np.degrees(
+                                npz_data["moonAlts"][mjd_idx]
+                            ),
                             "moon_az": np.degrees(moon_az_rad),
                             "moon_sep": np.degrees(moon_sep),
                             "sun_ra": np.degrees(npz_data["sunRAs"][mjd_idx]),
-                            "sun_decl": np.degrees(npz_data["sunDecs"][mjd_idx]),
-                            "sun_alt": np.degrees(npz_data["sunAlts"][mjd_idx]),
+                            "sun_decl": np.degrees(
+                                npz_data["sunDecs"][mjd_idx]
+                            ),
+                            "sun_alt": np.degrees(
+                                npz_data["sunAlts"][mjd_idx]
+                            ),
                             "sky": pre_sky[band][mjd_idx],
                         }
                     )
                 )
 
-        self.sky = pd.concat(skies).set_index(["band", "mjd", "alt", "az"], drop=False)
+        self.sky = pd.concat(skies).set_index(
+            ["band", "mjd", "alt", "az"], drop=False
+        )
         self.sky.sort_index(inplace=True)
 
         if self.max_num_mjds is not None:
@@ -693,7 +735,7 @@ class SkyModelZernike:
     ----------
     data_file : str (None)
         File name from which to load Zernike coefficients
-  
+
     """
 
     def __init__(self, data_file=None, **kwargs):
@@ -701,13 +743,15 @@ class SkyModelZernike:
             if "SIMS_SKYBRIGHTNESS_DATA" in os.environ:
                 data_dir = os.environ["SIMS_SKYBRIGHTNESS_DATA"]
             else:
-                data_dir = os.path.join(getPackageDir("sims_skybrightness_pre"), "data")
+                data_dir = os.path.join(
+                    getPackageDir("sims_skybrightness_pre"), "data"
+                )
 
             data_file = os.path.join(data_dir, "zernike.h5")
 
         self.zernike_model = {}
         for band in BANDS:
-            sky = ZernikeSky()
+            sky = ZernikeSky(**kwargs)
             sky.load_coeffs(data_file, band)
             self.zernike_model[band] = sky
 
@@ -715,10 +759,6 @@ class SkyModelZernike:
         self,
         mjd,
         indx=None,
-        airmass_mask=True,
-        planet_mask=True,
-        moon_mask=True,
-        zenith_mask=True,
         badval=healpy.UNSEEN,
         filters=["u", "g", "r", "i", "z", "y"],
         extrapolate=False,
@@ -733,14 +773,6 @@ class SkyModelZernike:
         indx : List of int(s) (None)
             indices to interpolate the sky values at. Returns full sky if None. If the class was
             instatiated with opsimFields, indx is the field ID, otherwise it is the healpix ID.
-        airmass_mask : bool (True)
-            Set high (>2.5) airmass pixels to badval.
-        planet_mask : bool (True)
-            Set sky maps to badval near (2 degrees) bright planets.
-        moon_mask : bool (True)
-            Set sky maps near (10 degrees) the moon to badval.
-        zenith_mask : bool (True)
-            Set sky maps at high altitude (>86.5) to badval.
         badval : float (-1.6375e30)
             Mask value. Defaults to the healpy mask value.
         filters : list
@@ -755,22 +787,34 @@ class SkyModelZernike:
             A dictionary with filter names as keys and np.arrays as values which
             hold the sky brightness maps in mag/sq arcsec.
         """
+        sky_brightness = {}
+
+        sun_el = _calc_sun_el(mjd)
+        if sun_el > 0:
+            warnings.warn('Requested MJD between sunrise and sunset')
+            if indx is None:
+                nside = self.zernike_model[filters[0]].nside
+                npix = healpy.nside2npix(nside)
+            else:
+                npix = len(indx)
+                
+            for band in filters:
+                sky_brightness[band] = np.full(npix, badval)
+
+            return sky_brightness
+
         if extrapolate:
             raise NotImplementedError
 
-        if moon_mask:
-            raise NotImplementedError
+        for band in filters:
+            band_brightness = self.zernike_model[band].compute_healpix(
+                indx, mjd
+            )
+            badval_idxs = np.where(~np.isfinite(band_brightness))
+            band_brightness[badval_idxs] = badval
+            sky_brightness[band] = band_brightness
 
-        if airmass_mask:
-            raise NotImplementedError
-
-        if planet_mask:
-            raise NotImplementedError
-
-        if zenith_mask:
-            raise NotImplementedError
-        
-        raise NotImplementedError
+        return sky_brightness
 
 
 def cut_pre_dataset(
@@ -817,7 +861,7 @@ def cut_pre_dataset(
 
     min_mjd = int(np.floor(kept_mjds.min()))
     max_mjd = int(np.floor(kept_mjds.max()))
-    out_fname_base = f'{min_mjd}_{max_mjd}'
+    out_fname_base = f"{min_mjd}_{max_mjd}"
 
     cut_npz_fname = os.path.join(cut_dir, out_fname_base + ".npz")
     np.savez(cut_npz_fname, header=npz_hdr, dict_of_lists=npz_data)
@@ -825,12 +869,26 @@ def cut_pre_dataset(
     cut_npy_fname = os.path.join(cut_dir, out_fname_base + ".npy")
     np.save(cut_npy_fname, pre_sky)
 
+
 # internal functions & classes
 
 
 @lru_cache()
 def _calc_moon_az_rad(mjd):
-    ra_rad, decl_rad, diam = palpy.rdplan(mjd, 3, TELESCOPE.longitude_rad, TELESCOPE.latitude_rad)
+    ra_rad, decl_rad, diam = palpy.rdplan(
+        mjd, 3, TELESCOPE.longitude_rad, TELESCOPE.latitude_rad
+    )
     ha_rad = palpy.gmst(mjd) + TELESCOPE.longitude_rad - ra_rad
     az_rad, el_rad = palpy.de2h(ha_rad, decl_rad, TELESCOPE.latitude_rad)
     return az_rad
+
+
+@lru_cache()
+def _calc_sun_el(mjd):
+    ra_rad, decl_rad, diam = palpy.rdplan(
+        mjd, 0, TELESCOPE.longitude_rad, TELESCOPE.latitude_rad
+    )
+    ha_rad = palpy.gmst(mjd) + TELESCOPE.longitude_rad - ra_rad
+    az_rad, el_rad = palpy.de2h(ha_rad, decl_rad, TELESCOPE.latitude_rad)
+    el = np.degrees(el_rad)
+    return el
