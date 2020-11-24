@@ -747,7 +747,21 @@ class SkyModelZernike:
                     getPackageDir("sims_skybrightness_pre"), "data"
                 )
 
-            data_file = os.path.join(data_dir, "zernike.h5")
+            data_file = os.path.join(data_dir, "zernike", "zernike.h5")
+
+            zernike_metadata = pd.read_hdf(data_file, "zernike_metadata")
+
+            order = int(zernike_metadata["order"])
+            if 'order' in kwargs:
+                assert order == kwargs['order']
+            else:
+                kwargs['order'] = order
+
+            max_zd = zernike_metadata["max_zd"]
+            if 'max_zd' in kwargs:
+                assert max_zd == kwargs['max_zd']
+            else:
+                kwargs['max_zd'] = max_zd
 
         self.zernike_model = {}
         for band in BANDS:
