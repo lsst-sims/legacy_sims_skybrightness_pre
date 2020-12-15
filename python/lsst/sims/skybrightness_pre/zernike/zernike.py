@@ -768,6 +768,7 @@ class SkyModelZernike:
             sky = ZernikeSky(**kwargs)
             sky.load_coeffs(data_file, band)
             self.zernike_model[band] = sky
+        self.nside = sky.nside
 
     def returnMags(
         self,
