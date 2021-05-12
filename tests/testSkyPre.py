@@ -176,7 +176,7 @@ class TestSkyPre(unittest.TestCase):
 
             # Where to check the magnitudes match
             mag_am_limit = 1.5
-            mag_tol = 0.21  # mags
+            mag_tol = 0.27  # mags
 
             for mjd in mjds:
                 original_model.setRaDecMjd(ra, dec, mjd, degrees=True)
