@@ -20,7 +20,7 @@ class TestZenikeFitDrivers(unittest.TestCase):
             getPackageDir("sims_skybrightness_pre"), "tests", "data"
         )
 
-    #    @unittest.skip("skipping test_fit_pre")
+    @unittest.skip("skipping test_fit_pre")
     def test_fit_pre(self):
         npy_fname = os.path.join(
             self.cut_pre_data_dir, self.test_data_base_fname + ".npy"
@@ -33,7 +33,7 @@ class TestZenikeFitDrivers(unittest.TestCase):
         self.assertGreater(zernike_coeffs.shape[1], 20)
         self.assertEqual(tuple(zernike_coeffs.index.names), ("band", "mjd"))
 
-    #    @unittest.skip("skipping test_bulk_zernike_fit")
+    @unittest.skip("skipping test_bulk_zernike_fit")
     def test_bulk_zernike_fit(self):
         test_out_dir = TemporaryDirectory()
         out_fname = os.path.join(test_out_dir.name, "bulk_zern_fit.h5")
@@ -57,7 +57,7 @@ class TestZernikeSky(unittest.TestCase):
         )
         self.fname = os.path.join(self.cut_pre_data_dir, "zernsky.h5")
 
-    #    @unittest.skip("skipping test_compute_sky")
+    @unittest.skip("skipping test_compute_sky")
     def test_compute_sky(self):
         zsky = zernike.ZernikeSky()
         zsky.load_coeffs(self.fname, "i")
@@ -93,6 +93,7 @@ class TestSkyBrightnessPreData(unittest.TestCase):
             getPackageDir("sims_skybrightness_pre"), "tests", "data"
         )
 
+    @unittest.skip("Skipping test_load")
     def test_load(self):
         pre_data = zernike.SkyBrightnessPreData(
             self.test_data_base_fname,
@@ -112,6 +113,7 @@ class TestSkyModelZernike(unittest.TestCase):
         )
         self.fname = os.path.join(self.cut_pre_data_dir, "zernsky.h5")
 
+    @unittest.skip("skipping test_getMags")
     def test_getMags(self):
         mjd = 59823.97
         sky_model_zern = zernike.SkyModelZernike(data_file=self.fname)
@@ -128,6 +130,7 @@ class TestSkyModelZernike(unittest.TestCase):
             self.assertLess(sky[band][notnan].max(), 20)
             self.assertGreater(sky[band][notnan].min(), 8)
 
+    @unittest.skip("skipping test_getMags_day")
     def test_getMags_day(self):
         mjd = 59824.8
         sky_model_zern = zernike.SkyModelZernike(data_file=self.fname)
